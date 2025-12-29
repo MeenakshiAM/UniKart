@@ -1,3 +1,51 @@
+# UniKart -   A DIGITAL MARKETPLACE FOR STUDENT ENTREPRENEURS 
+
+Many small sellers lack a secure, affordable, and transparent platform to conduct online business, while buyers struggle with trust, product quality, and safe payments. UniKart addresses this by providing a cloud-enabled e-commerce system built with Next.js, Node.js, Express, and MongoDB. It offers role-based modules, secure Razorpay payments with commission/refund control, and AWS-backed deployment. UniKart ensures reliability, safety, and a smooth digital commerce experience for all users.
+
+---
+
+
+## 🚀 Getting Started
+
+Follow the steps below to clone and run the project locally.
+
+### 📌 Prerequisites
+Make sure you have the following installed on your system:
+- **Node.js** (v16 or later recommended)
+- **npm** or **yarn**
+- **Git**
+
+### 📥 Clone the Repository
+```bash
+git clone https://github.com/your-username/your-repo-name.git
+
+```
+### 📂 Navigate to the Project Directory
+cd your-repo-name
+
+### 📦 Install Dependencies
+
+Using npm:
+
+```bash
+npm install
+```
+
+### ▶️ Run the Application
+```bash
+npm run dev
+```
+The app will be available at:
+
+http://localhost:3000
+
+
+---
+---
+----
+
+##ignore these guys this is the default read me provided by the next.js framework itself... i didnt delete it coz we will need it for hosting ...
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
