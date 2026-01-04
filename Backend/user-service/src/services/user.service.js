@@ -43,10 +43,11 @@ exports.registerUser = async ({
   if (!allowedDepartments.includes(department))
     throw new Error("Invalid department");
 
+  const hashedPassword = await bcrypt.hash(password, 10);
   return await userRepo.createUser({
     name,
     email,
-    password,
+    password : hashedPassword,
     registerNumber,
     dateOfBirth,
     department,
