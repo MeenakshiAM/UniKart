@@ -1,9 +1,18 @@
-// middlewares/role.middleware.js
-module.exports = function(requiredRole) {
+module.exports = (...allowedRoles) => {
   return (req, res, next) => {
-    if (!req.user || req.user.role !== requiredRole) {
-      return res.status(403).json({ message: "Forbidden: Insufficient role" });
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthenticated" });
     }
+
+    // 👑 Admin override
+    if (req.user.role === "ADMIN") {
+      return next();
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     next();
   };
 };

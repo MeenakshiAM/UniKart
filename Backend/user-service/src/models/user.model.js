@@ -8,6 +8,11 @@ const userSchema = new mongoose.Schema({
   dateOfBirth: { type: Date }, // optional
   department: { type: String }, // optional
   isSeller: { type: Boolean, default: false },
+  role: {
+  type: String,
+  enum: ["BUYER", "SELLER", "ADMIN"],
+  default: "BUYER"
+},
 }, { timestamps: true });
 
 module.exports = mongoose.model("User", userSchema);

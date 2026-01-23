@@ -57,7 +57,7 @@ exports.login = async (req, res) => {
 //----------testing authentication middleware
 exports.testAuth = (req, res) => {
   res.json({
-    message: "Auth middleware working ✅",
+    message: "Auth middleware working ",
     user: req.user
   });
 };

@@ -12,10 +12,10 @@ exports.getSellerByUserId = async (userId) => {
 };
 
 // UPDATE full seller profile
-exports.updateSellerByUserId = async (userId, updateData) => {
+exports.updateSellerByUserId = async (userId, data) => {
   return await SellerProfile.findOneAndUpdate(
     { userId },
-    updateData,
+    data,
     { new: true }
   );
 };

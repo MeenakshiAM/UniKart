@@ -46,21 +46,32 @@ exports.registerUser = async ({
     throw new Error("Invalid department");
 
   const hashedPassword = await bcrypt.hash(password, 10);
+
   return await userRepo.createUser({
     name,
     email,
-    password : hashedPassword,
+    password: hashedPassword,
     registerNumber,
     dateOfBirth,
     department,
-    isSeller: false
+    role: "BUYER"
   });
 };
 
 // ------------------ SELLER REGISTRATION ------------------
-exports.registerSeller = async ({ userId, shopName, shopDescription, agreedToCommission }) => {
+exports.registerSeller = async ({
+  userId,
+  shopName,
+  shopDescription,
+  agreedToCommission
+}) => {
   const user = await userRepo.getUserById(userId);
   if (!user) throw new Error("User not found");
+
+  // Prevent re-registration
+  if (user.role === "SELLER" || user.role === "ADMIN") {
+    throw new Error("User already has seller/admin privileges");
+  }
 
   const existingProfile = await sellerRepo.getSellerByUserId(userId);
 
@@ -72,78 +83,91 @@ exports.registerSeller = async ({ userId, shopName, shopDescription, agreedToCom
 
   const status = isVerified ? "ACTIVE" : "PENDING";
 
-  // 🟢 CASE 1: No profile → CREATE
+  // CASE 1: Create seller profile
   if (!existingProfile) {
     const profile = await sellerRepo.createSellerProfile({
       userId,
       shopName,
       shopDescription,
       agreedToCommission,
-      status
+      status,
     });
 
+    // ROLE TRANSITION
     if (status === "ACTIVE") {
-      await userRepo.updateUserById(userId, { isSeller: true });
+      await userRepo.updateUserById(userId, {
+        role: "SELLER",
+        isSeller: true
+      });
+       User = await userRepo.getUserById(userId);
     }
 
     return {
-      message: status === "ACTIVE"
-        ? "Seller activated successfully"
-        : "Seller registered, pending verification",
-      profile
+      message:
+        status === "ACTIVE"
+          ? "Seller activated successfully"
+          : "Seller registered, pending verification",
+      profile,
+        user: {
+    id: User._id,
+    role: User.role,
+    isSeller: User.isSeller
+  }
     };
   }
 
-  // 🟡 CASE 2: Exists but PENDING → UPDATE
+  // CASE 2: Update pending seller
   if (existingProfile.status === "PENDING") {
     const updatedProfile = await sellerRepo.updateSellerByUserId(userId, {
       shopName,
       shopDescription,
       agreedToCommission,
-      status
+      status,
+      role
     });
 
     if (status === "ACTIVE") {
-      await userRepo.updateUserById(userId, { isSeller: true });
+      await userRepo.updateUserById(userId, {
+        role: "SELLER",
+        isSeller: true
+      });
     }
 
     return {
-      message: status === "ACTIVE"
-        ? "Seller activated successfully"
-        : "Seller details updated, still pending",
+      message:
+        status === "ACTIVE"
+          ? "Seller activated successfully"
+          : "Seller details updated, still pending",
       profile: updatedProfile
     };
   }
 
-  // 🔴 CASE 3: Already ACTIVE
-  throw new Error("User already an active seller");
+  throw new Error("Seller already active");
 };
 
-
-
-
+// ------------------ GET USERS (ADMIN ONLY) ------------------
 exports.getAllUsers = async () => {
   return await userRepo.getAllUsers();
 };
 
-//-------------------------------LOGIN FUNCTIONALITY-------------------------------
-
+// ------------------ LOGIN ------------------
 exports.loginUser = async ({ email, password }) => {
   const user = await userRepo.findUserByEmail(email);
-  if (!user) {
-    throw new Error("Invalid email or password");
-  }
+  if (!user) throw new Error("Invalid email or password");
 
   const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    throw new Error("Invalid email or password");
-  }
+  if (!isMatch) throw new Error("Invalid email or password");
 
-  const token = jwt.sign(
-    { userId: user._id },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
+ const token = jwt.sign(
+  {
+    userId: user._id,
+    role: user.role,      
+    isSeller: user.isSeller
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN }
+);
+
 
   return {
     message: "Login successful",
@@ -152,7 +176,7 @@ exports.loginUser = async ({ email, password }) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      isSeller: user.isSeller
+      role: user.role
     }
   };
 };
