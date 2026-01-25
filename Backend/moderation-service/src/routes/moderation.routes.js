@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
 
-const { testModeration } = require("../controllers/moderation.controller");
+const {
+  analyzeText,
+} = require("../controllers/moderation.controller");
 
-router.post("/test", testModeration);
+router.post("/analyze", analyzeText);
 
 module.exports = router;

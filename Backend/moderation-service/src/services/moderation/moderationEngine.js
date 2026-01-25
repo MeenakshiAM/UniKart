@@ -1,27 +1,28 @@
 const analyzeText = require("./textAnalyzer");
+const ModerationLog = require("../../models/moderationLog");
 
 const decideModeration = (toxicityScore) => {
   if (toxicityScore < 0.3) {
     return {
       decision: "APPROVED",
-      reason: "Low toxicity detected"
+      reason: "Low toxicity detected",
     };
   }
 
   if (toxicityScore <= 0.7) {
     return {
       decision: "PENDING",
-      reason: "Moderate toxicity, needs review"
+      reason: "Moderate toxicity, needs review",
     };
   }
 
   return {
     decision: "REJECTED",
-    reason: "High toxicity detected"
+    reason: "High toxicity detected",
   };
 };
 
-async function analyzeAndDecide(text) {
+const analyzeAndDecide = async (text) => {
   const result = await analyzeText(text);
 
   const toxicityScore =
@@ -29,13 +30,25 @@ async function analyzeAndDecide(text) {
 
   const moderationResult = decideModeration(toxicityScore);
 
-  return {
+   const isAllowed = moderationResult.decision === "APPROVED";
+
+  const log = await ModerationLog.create({
+    inputText: text,
     toxicityScore,
-    ...moderationResult
+    decision: moderationResult.decision,
+    reason: moderationResult.reason,
+    isAllowed
+  });
+
+  return {
+    id: log._id,
+    toxicityScore,
+    ...moderationResult,
+    isAllowed
   };
-}
+};
 
 module.exports = {
   analyzeAndDecide,
-  decideModeration
+  decideModeration,
 };

@@ -1,23 +1,25 @@
-const moderationService = require("../services/moderation/moderationEngine.service");
+const {
+  analyzeAndDecide
+} = require("../services/moderation/moderationEngine");
 
-exports.testModeration = async (req, res) => {
+
+exports.analyzeText = async (req, res) => {
   try {
-    const { targetType, text, imageUrls } = req.body;
+    const { text } = req.body;
 
-    const result = await moderationService.runModeration({
-      targetType,
-      text,
-      imageUrls
-    });
+    if (!text || text.trim() === "") {
+      return res.status(400).json({
+        error: "Text is required for moderation",
+      });
+    }
 
-    res.status(200).json({
-      success: true,
-      data: result
-    });
+    const result = await analyzeAndDecide(text);
+
+    return res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
+    console.error("Moderation error:", error.message);
+    return res.status(500).json({
+      error: "Moderation service failed",
     });
   }
 };
