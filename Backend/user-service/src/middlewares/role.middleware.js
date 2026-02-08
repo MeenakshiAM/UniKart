@@ -4,7 +4,7 @@ module.exports = (...allowedRoles) => {
       return res.status(401).json({ message: "Unauthenticated" });
     }
 
-    // 👑 Admin override
+    // Admin override
     if (req.user.role === "ADMIN") {
       return next();
     }

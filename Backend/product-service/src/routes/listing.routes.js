@@ -1,9 +1,16 @@
 const express = require("express");
 const router = express.Router();
 
-// TEMP test route
-router.get("/test", (req, res) => {
-  res.json({ message: "Product service route working" });
-});
+const authMiddleware = require("../middlewares/auth.middleware");
+const roleMiddleware = require("../middlewares/role.middleware");
+console.log(authMiddleware);
+const { createProduct } = require("../controllers/product.controller");
+
+router.post(
+  "/",
+  authMiddleware,          
+  roleMiddleware("SELLER"),
+  createProduct
+);
 
 module.exports = router;

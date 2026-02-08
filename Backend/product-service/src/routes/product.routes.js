@@ -1,11 +1,16 @@
+// src/routes/product.routes.js
 const express = require("express");
 const router = express.Router();
 
-const {
-  createProduct,
-} = require("../controllers/product.controller");
+const authMiddleware = require("../middlewares/auth.middleware");
+const roleMiddleware = require("../middlewares/role.middleware");
+const { createProduct } = require("../controllers/product.controller");
 
-// CREATE PRODUCT
-router.post("/", createProduct);
+router.post(
+  "/",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  createProduct
+);
 
 module.exports = router;

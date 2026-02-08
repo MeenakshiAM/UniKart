@@ -2,6 +2,11 @@ const Product = require("../models/Product");
 
 exports.createProduct = async (req, res) => {
   try {
+    
+    console.log("REQ.USER =", req.user.userId);
+
+     const sellerId = req.user.userId;
+    
     const {
       title,
       description,
@@ -10,7 +15,7 @@ exports.createProduct = async (req, res) => {
       basePrice,
       quantity,
       images,
-      sellerId,
+      
     } = req.body;
 
     if (
