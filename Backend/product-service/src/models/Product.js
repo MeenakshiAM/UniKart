@@ -69,7 +69,10 @@ const productSchema = new mongoose.Schema(
     moderationReason: {
       type: String,
     },
-
+    isApproved:{
+      type: Boolean,
+      default: false,
+    },
     ratings: {
       average: {
         type: Number,
