@@ -1,4 +1,6 @@
 const { createProductService } = require("../services/product.service");
+const axios = require("axios"); 
+const Product = require("../models/Product");
 
 exports.createProduct = async (req, res) => {
   try {
@@ -25,3 +27,15 @@ exports.createProduct = async (req, res) => {
     });
   }
 };
+exports.getMyProducts = async (req, res) => {
+   try { 
+    const sellerId = req.user.userId; 
+    const products = await Product.find({ sellerId }); 
+    res.status(200).json({ success: true, count: products.length, products });
+   }
+    catch (error) 
+    { 
+      console.log("GET MY PRODUCTS ERROR:", error); 
+      res.status(500).json({ success: false, message: "Server error" });
+     }
+     };
