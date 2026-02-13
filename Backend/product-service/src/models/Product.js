@@ -17,7 +17,8 @@ const productSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      required: true,
+       enum: ["PRODUCT", "SERVICE"],
+       required: true,
       index: true, // for filtering
     },
 
