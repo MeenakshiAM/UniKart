@@ -21,33 +21,39 @@ exports.createProductService = async (productData, sellerId) => {
 
   const { isAllowed, reason } = moderationResponse.data;
 
-  if (!isAllowed) {
-    return {
-      blocked: true,
-      reason
-    };
-  }
+let status;
+let isApproved;
+
+if (isAllowed) {
+  status = "ACTIVE";
+  isApproved = true;
+} else {
+  status = "REJECTED";
+  isApproved = false;
+}
+
 
   // 🔹 Calculate final price
   const commissionPercent = 10;
   const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
 
-  const product = await Product.create({
-    title,
-    description,
-    category,
-    subCategory,
-    price: {
-      basePrice,
-      commissionPercent,
-      finalPrice
-    },
-    quantity,
-    images,
-    sellerId,
-    status: "PENDING",
-    isApproved: false
-  });
+const product = await Product.create({
+  title,
+  description,
+  category,
+  subCategory,
+  price: {
+    basePrice,
+    commissionPercent,
+    finalPrice
+  },
+  quantity,
+  images,
+  sellerId,
+  status,
+  isApproved,
+  moderationReason: isAllowed ? null : reason
+});
 
   return {
     blocked: false,

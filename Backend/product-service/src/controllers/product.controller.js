@@ -39,3 +39,55 @@ exports.getMyProducts = async (req, res) => {
       res.status(500).json({ success: false, message: "Server error" });
      }
      };
+
+
+     // getting only the active products for buyer to see
+exports.getAllActiveProducts = async (req, res) => {
+  try {
+    const products = await Product.find({
+      status: "ACTIVE",
+      isApproved: true
+    })
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET ACTIVE PRODUCTS ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+// geting rhe active products for 1 specific seller
+exports.getProductsBySellerId = async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+
+    const products = await Product.find({
+      sellerId,
+      status: "ACTIVE",
+      isApproved: true
+    })
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET SELLER PRODUCTS ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
