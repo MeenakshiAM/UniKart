@@ -15,11 +15,17 @@ const productSchema = new mongoose.Schema(
       maxlength: 2000,
     },
 
+    type: {
+      type: String,
+      enum: ["PRODUCT", "SERVICE"],
+      required: true,
+      index: true,
+    },
+
     category: {
       type: String,
-       enum: ["PRODUCT", "SERVICE"],
-       required: true,
-      index: true, // for filtering
+      required: true,
+      index: true,
     },
 
     subCategory: {
@@ -34,7 +40,7 @@ const productSchema = new mongoose.Schema(
       },
       commissionPercent: {
         type: Number,
-        default: 10, // admin can change later
+        default: 10,
       },
       finalPrice: {
         type: Number,
@@ -44,13 +50,22 @@ const productSchema = new mongoose.Schema(
 
     quantity: {
       type: Number,
-      required: true,
       min: 0,
+      required: function () {
+        return this.type === "PRODUCT";
+      },
     },
 
     images: {
       type: [String],
-      validate: [(arr) => arr.length > 0, "At least one image required"],
+      validate: [
+        {
+          validator: function (arr) {
+            return arr.length > 0;
+          },
+          message: "At least one image required",
+        },
+      ],
     },
 
     sellerId: {
@@ -62,18 +77,16 @@ const productSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["PENDING", "ACTIVE", "REJECTED"],
-      default: "PENDING",
+      enum: ["ACTIVE", "REJECTED"],
+      required: true,
       index: true,
     },
 
     moderationReason: {
       type: String,
+      default: null,
     },
-    isApproved:{
-      type: Boolean,
-      default: false,
-    },
+
     ratings: {
       average: {
         type: Number,
