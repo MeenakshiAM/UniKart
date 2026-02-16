@@ -70,13 +70,14 @@ export default function Shop() {
     setWishlist(newWishlist);
     if (typeof window !== 'undefined') {
       localStorage.setItem('wishlist', JSON.stringify(newWishlist));
+      window.dispatchEvent(new Event('storage'));
     }
   };
 
   const addToCart = (product) => {
     if (typeof window !== 'undefined') {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      cart.push(product);
+      cart.push({ ...product, quantity: 1 });
       localStorage.setItem('cart', JSON.stringify(cart));
       alert(`${product.name} added to cart!`);
       window.dispatchEvent(new Event('storage'));
@@ -132,8 +133,28 @@ export default function Shop() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map(product => (
                   <div key={product.id} className="product-card group">
-                    <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-t-lg flex items-center justify-center text-6xl mb-4 group-hover:scale-105 transition-transform">
+                    
+                    {/* Product Image with Wishlist Heart */}
+                    <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-t-lg flex items-center justify-center text-6xl mb-4 group-hover:scale-105 transition-transform relative">
                       {product.image}
+                      
+                      {/* Wishlist Heart Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleWishlist(product.id);
+                        }}
+                        className={`absolute top-3 right-3 p-2 rounded-full transition-all ${
+                          wishlist.includes(product.id)
+                            ? 'bg-pink-500 text-white shadow-lg scale-110'
+                            : 'bg-white text-gray-400 hover:text-pink-500 hover:scale-110 shadow-md'
+                        }`}
+                        title={wishlist.includes(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                      >
+                        <Heart 
+                          className={`w-5 h-5 transition-all ${wishlist.includes(product.id) ? 'fill-current' : ''}`}
+                        />
+                      </button>
                     </div>
 
                     <div className="p-4">
@@ -149,20 +170,16 @@ export default function Shop() {
 
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-indigo-600">₹{product.price}</span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => toggleWishlist(product.id)}
-                            className={`icon-btn ${wishlist.includes(product.id) ? "text-pink-500" : ""}`}
-                          >
-                            <Heart className={`w-5 h-5 ${wishlist.includes(product.id) ? "fill-current" : ""}`} />
-                          </button>
-                          <button
-                            onClick={() => addToCart(product)}
-                            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-1"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                          </button>
-                        </div>
+                        
+                        {/* Add to Cart Button */}
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                          title="Add to cart"
+                        >
+                          <ShoppingCart className="w-4 h-4" />
+                          <span>Add</span>
+                        </button>
                       </div>
                     </div>
                   </div>
