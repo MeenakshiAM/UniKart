@@ -9,8 +9,11 @@ const {
   createProduct,
   getMyProducts,
   getAllActiveProducts,
-  getProductsBySellerId
+  getProductsBySellerId,
+  updateProduct,
+  deleteProduct
 } = require("../controllers/product.controller");
+
 
 // Public - Marketplace Feed
 router.get("/", getAllActiveProducts);
@@ -32,6 +35,29 @@ router.post(
   authMiddleware,
   roleMiddleware("SELLER"),
   createProduct
+);
+
+// Seller - Update product
+router.patch(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  updateProduct
+);
+
+// Seller - Delete product
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  deleteProduct
+);
+// Seller - Delete product
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  deleteProduct
 );
 
 module.exports = router;
