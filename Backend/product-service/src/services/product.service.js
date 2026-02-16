@@ -14,7 +14,7 @@ exports.createProductService = async (productData, sellerId) => {
     images
   } = productData;
 
-  // 🔹 Moderation
+  //  Moderation
   const moderationResponse = await axios.post(
     "http://localhost:4003/api/moderation/analyze",
     { text: `${title} ${description}` }
@@ -64,7 +64,9 @@ exports.updateProductService = async (
     throw new Error("Product not found or unauthorized");
   }
 
-  // 🔹 If title or description is being updated → Moderate
+
+  // MODERATION IF TEXT UPDATED
+ 
   if (updateData.title || updateData.description) {
 
     const textToModerate = `
@@ -90,10 +92,42 @@ exports.updateProductService = async (
     product.moderationReason = null;
   }
 
-  // 🔹 Update allowed fields
-  Object.keys(updateData).forEach(key => {
-    product[key] = updateData[key];
-  });
+ 
+  //PRICE UPDATE
+
+  if (updateData.price?.basePrice) {
+
+    const commissionPercent = 10; // keep fixed from system
+    const basePrice = updateData.price.basePrice;
+
+    const finalPrice =
+      basePrice + (basePrice * commissionPercent) / 100;
+
+    product.price.basePrice = basePrice;
+    product.price.commissionPercent = commissionPercent;
+    product.price.finalPrice = finalPrice;
+  }
+
+
+  if (updateData.quantity !== undefined) {
+    product.quantity = updateData.quantity;
+  }
+
+  if (updateData.images) {
+    product.images = updateData.images;
+  }
+
+  if (updateData.category) {
+    product.category = updateData.category;
+  }
+
+  if (updateData.subCategory) {
+    product.subCategory = updateData.subCategory;
+  }
+
+  if (updateData.type) {
+    product.type = updateData.type;
+  }
 
   await product.save();
 
