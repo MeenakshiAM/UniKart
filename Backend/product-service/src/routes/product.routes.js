@@ -52,12 +52,4 @@ router.delete(
   roleMiddleware("SELLER"),
   deleteProduct
 );
-// Seller - Delete product
-router.delete(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("SELLER"),
-  deleteProduct
-);
-
 module.exports = router;
