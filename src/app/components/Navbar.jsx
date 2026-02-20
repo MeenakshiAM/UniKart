@@ -14,7 +14,8 @@ export default function Navbar() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    name: ""
+    name: "",
+    userType: "buyer" // Default to buyer
   });
 
   // Update counts from localStorage
@@ -48,10 +49,11 @@ export default function Navbar() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', 'demo-token-' + Date.now());
       localStorage.setItem('userName', formData.name || formData.email.split('@')[0]);
+      localStorage.setItem('userType', formData.userType);
     }
     
     // Reset form
-    setFormData({ email: "", password: "", name: "" });
+    setFormData({ email: "", password: "", name: "", userType: "buyer" });
   };
 
   const handleSignOut = () => {
@@ -59,6 +61,7 @@ export default function Navbar() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
       localStorage.removeItem('userName');
+      localStorage.removeItem('userType');
     }
   };
 
@@ -193,65 +196,68 @@ export default function Navbar() {
             <form onSubmit={handleSubmit} className="space-y-4">
               
               {/* Name (Sign Up Only) */}
-              {!isLogin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required={!isLogin}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                </div>
-              )}
+{!isLogin && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Full Name
+    </label>
+    <div className="relative">
+      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+      <input
+        type="text"
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        required={!isLogin}
+        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900 bg-white placeholder-gray-400"
+        placeholder="Enter your full name"
+        style={{ color: '#111827' }}
+      />
+    </div>
+  </div>
+)}
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address
+                    </label>
+                    <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                    placeholder="student@college.edu"
-                  />
-                </div>
-              </div>
+                    <input
+      type="email"
+      name="email"
+      value={formData.email}
+      onChange={handleChange}
+      required
+      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900 bg-white placeholder-gray-400"
+      placeholder="student@college.edu"
+      style={{ color: '#111827' }}
+    />
+  </div>
+</div>
 
               {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Password
+  </label>
+  <div className="relative">
+    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+    <input
+      type="password"
+      name="password"
+      value={formData.password}
+      onChange={handleChange}
+      required
+      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900 bg-white placeholder-gray-400"
+      placeholder="••••••••"
+      style={{ color: '#111827' }}
+    />
+  </div>
+</div>
 
-              {/* User Type (Sign Up Only) */}
+              {/* User Type (Sign Up Only) - NOW CLICKABLE */}
               {!isLogin && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -260,14 +266,24 @@ export default function Navbar() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      className="p-4 rounded-lg border-2 border-indigo-500 bg-indigo-50 text-indigo-700 transition-all"
+                      onClick={() => setFormData({ ...formData, userType: "buyer" })}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        formData.userType === "buyer"
+                          ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
                     >
                       <div className="text-2xl mb-1">🛍️</div>
                       <div className="font-medium text-sm">Shop</div>
                     </button>
                     <button
                       type="button"
-                      className="p-4 rounded-lg border-2 border-gray-300 hover:border-gray-400 transition-all"
+                      onClick={() => setFormData({ ...formData, userType: "seller" })}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        formData.userType === "seller"
+                          ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                          : "border-gray-300 hover:border-gray-400"
+                      }`}
                     >
                       <div className="text-2xl mb-1">💼</div>
                       <div className="font-medium text-sm">Sell</div>
