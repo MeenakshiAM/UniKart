@@ -2,7 +2,8 @@ const Wishlist = require("../models/wishlist.model");
 
 exports.toggleWishlist = async (req, res) => {
   try {
-    const { userId, productId } = req.body;
+    const userId = req.user.userId;
+    const { productId } = req.body;
 
     if (!userId || !productId) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -31,7 +32,7 @@ exports.toggleWishlist = async (req, res) => {
 
 exports.getWishlist = async (req, res) => {
   try {
-    const { userId } = req.params;
+   const userId = req.user.userId;
 
     const wishlist = await Wishlist.find({ userId });
 
