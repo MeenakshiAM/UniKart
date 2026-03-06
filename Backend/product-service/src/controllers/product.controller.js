@@ -155,3 +155,20 @@ exports.deleteProduct = async (req, res) => {
     });
   }
 };
+exports.hideProduct = async (req, res) => {
+
+  const sellerId = req.user.userId;
+  const { id } = req.params;
+
+  const product = await Product.findOneAndUpdate(
+    { _id: id, sellerId },
+    { status: "HIDDEN" },
+    { new: true }
+  );
+
+  res.json({
+    message: "Product hidden",
+    product
+  });
+
+};

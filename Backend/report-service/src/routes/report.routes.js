@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 
 const reportController = require("../controllers/report.controller");
+const authMiddleware = require("../middleware/auth.middleware");
 
-router.post("/", reportController.createReport);
+router.post("/", authMiddleware, reportController.createReport);
 
 module.exports = router;

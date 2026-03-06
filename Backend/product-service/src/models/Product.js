@@ -77,9 +77,14 @@ const productSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["ACTIVE", "REJECTED"],
+      enum: [
+        "DRAFT",
+        "ACTIVE",
+        "REJECTED",
+        "HIDDEN"
+      ],
       required: true,
-      index: true,
+      index: true
     },
 
     moderationReason: {

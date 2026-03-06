@@ -22,7 +22,13 @@ exports.createProductService = async (productData, sellerId) => {
 
   const { isAllowed, reason } = moderationResponse.data;
 
-  const status = isAllowed ? "ACTIVE" : "REJECTED";
+  let status;
+
+  if (productData.isDraft) {
+    status = "DRAFT";
+  } else {
+    status = isAllowed ? "ACTIVE" : "REJECTED";
+  }
 
   const commissionPercent = 10;
   const finalPrice =

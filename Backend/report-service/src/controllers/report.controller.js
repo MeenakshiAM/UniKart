@@ -2,16 +2,28 @@ const reportService = require("../services/report.service");
 
 exports.createReport = async (req, res) => {
   try {
-    const report = await reportService.createReport(req.body);
+    const reporterId = req.user.userId;
+    const { targetId, targetType, reason, description } = req.body;
 
-    res.status(201).json({
-      message: "Report submitted",
-      report
+    const result = await reportService.createReport({
+      reporterId,
+      targetId,
+      targetType,
+      reason,
+      description
     });
+
+    return res.status(201).json(result);
+
   } catch (error) {
-    res.status(500).json({
-      message: "Failed to create report",
-      error: error.message
-    });
+    console.error("Create Report Error:", error);
+
+    if (error.message === "DUPLICATE_REPORT") {
+      return res.status(400).json({
+        message: "You already reported this item"
+      });
+    }
+
+    return res.status(500).json({ message: "Server Error" });
   }
 };
