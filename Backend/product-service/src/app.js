@@ -1,4 +1,6 @@
-const express = require("express");
+const reviewRoutes = require("./routes/review.routes");
+
+app.use("/api", reviewRoutes);const express = require("express");
 const cors = require("cors");
 
 const listingRoutes = require("./routes/listing.routes");
