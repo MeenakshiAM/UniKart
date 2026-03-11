@@ -28,6 +28,18 @@ const reviewSchema = new mongoose.Schema(
     maxlength: 1000
   },
 
+  // ⭐ NEW FIELD
+  images: {
+    type: [String],
+    validate: {
+      validator: function(v) {
+        return v.length <= 3;
+      },
+      message: "Maximum 3 images allowed"
+    },
+    default: []
+  },
+
   status: {
     type: String,
     enum: ["ACTIVE", "REJECTED"],

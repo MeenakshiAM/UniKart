@@ -1,6 +1,4 @@
-const reviewRoutes = require("./routes/review.routes");
-
-app.use("/api", reviewRoutes);const express = require("express");
+const express = require("express");
 const cors = require("cors");
 
 const listingRoutes = require("./routes/listing.routes");
@@ -14,6 +12,10 @@ app.use("/api/listings", listingRoutes);
 const productRoutes = require("./routes/product.routes");
 
 app.use("/api/products", productRoutes);
+// routes
+
+const reviewRoutes = require("./routes/review.routes");
+app.use("/api", reviewRoutes);
 
 
 module.exports = app;
