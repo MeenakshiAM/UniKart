@@ -1,8 +1,30 @@
 const axios = require("axios");
 const Product = require("../models/Product");
+const mongoose = require("mongoose");
 
+// ----helper ..........
+const validateObjectId = (id, label = "ID") => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error(`Invalid ${label}`);
+  }
+};
+
+// ------ Moderation helper ---------
+const moderateText = async (text) => {
+  try {
+    const response = await axios.post(
+      "http://localhost:4003/api/moderation/analyze",
+      { text }
+    );
+    return response.data; // { isAllowed, reason }
+  } catch (err) {
+    console.error("Moderation service unavailable:", err.message);
+    return { isAllowed: true, reason: null }; // fail open
+  }
+};
+
+// --------- Create --------------
 exports.createProductService = async (productData, sellerId) => {
-
   const {
     title,
     description,
@@ -14,16 +36,9 @@ exports.createProductService = async (productData, sellerId) => {
     images
   } = productData;
 
-  //  Moderation
-  const moderationResponse = await axios.post(
-    "http://localhost:4003/api/moderation/analyze",
-    { text: `${title} ${description}` }
-  );
-
-  const { isAllowed, reason } = moderationResponse.data;
+  const { isAllowed, reason } = await moderateText(`${title} ${description}`);
 
   let status;
-
   if (productData.isDraft) {
     status = "DRAFT";
   } else {
@@ -31,20 +46,15 @@ exports.createProductService = async (productData, sellerId) => {
   }
 
   const commissionPercent = 10;
-  const finalPrice =
-    basePrice + (basePrice * commissionPercent) / 100;
+  const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
 
   const product = await Product.create({
     title,
     description,
-    type, 
+    type,
     category,
     subCategory,
-    price: {
-      basePrice,
-      commissionPercent,
-      finalPrice
-    },
+    price: { basePrice, commissionPercent, finalPrice },
     quantity: type === "PRODUCT" ? quantity : undefined,
     images,
     sellerId,
@@ -55,37 +65,56 @@ exports.createProductService = async (productData, sellerId) => {
   return { product };
 };
 
-exports.updateProductService = async (
-  productId,
-  sellerId,
-  updateData
-) => {
+// ------- Get by ID ----------
+exports.getProductByIdService = async (id) => {
+  validateObjectId(id, "product ID");
 
-  const product = await Product.findOne({
-    _id: productId,
-    sellerId
-  });
+  const product = await Product.findOne({ _id: id, status: "ACTIVE" });
 
-  if (!product) {
-    throw new Error("Product not found or unauthorized");
+  if (!product) throw new Error("Product not found");
+
+  return product;
+};
+
+// ---------- Get my products (seller) -----------
+exports.getMyProductsService = async (sellerId) => {
+  const products = await Product.find({ sellerId }).sort({ createdAt: -1 });
+  return products;
+};
+
+
+
+// ─── Get by seller ID (public profile) ─────────────────────
+exports.getProductsBySellerIdService = async (sellerId) => {
+  validateObjectId(sellerId, "seller ID");
+
+  const products = await Product.find({
+    sellerId,
+    status: "ACTIVE"
+  }).sort({ createdAt: -1 });
+
+  return products;
+};
+
+// ─── Update ─────────────────────────────────────────────────
+exports.updateProductService = async (productId, sellerId, updateData) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOne({ _id: productId, sellerId });
+
+  if (!product) throw new Error("Product not found or unauthorized");
+
+  if (updateData.type && updateData.type !== product.type) {
+    throw new Error("Product type cannot be changed after creation");
   }
 
-
-  // MODERATION IF TEXT UPDATED
- 
   if (updateData.title || updateData.description) {
-
     const textToModerate = `
       ${updateData.title || product.title}
       ${updateData.description || product.description}
     `;
 
-    const moderationResponse = await axios.post(
-      "http://localhost:4003/api/moderation/analyze",
-      { text: textToModerate }
-    );
-
-    const { isAllowed, reason } = moderationResponse.data;
+    const { isAllowed, reason } = await moderateText(textToModerate);
 
     if (!isAllowed) {
       product.status = "REJECTED";
@@ -96,46 +125,192 @@ exports.updateProductService = async (
 
     product.status = "ACTIVE";
     product.moderationReason = null;
+    if (updateData.title) product.title = updateData.title;
+    if (updateData.description) product.description = updateData.description;
   }
 
- 
-  //PRICE UPDATE
-
   if (updateData.price?.basePrice) {
-
-    const commissionPercent = 10; // keep fixed from system
+    const commissionPercent = 10;
     const basePrice = updateData.price.basePrice;
-
-    const finalPrice =
-      basePrice + (basePrice * commissionPercent) / 100;
-
+    const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
     product.price.basePrice = basePrice;
     product.price.commissionPercent = commissionPercent;
     product.price.finalPrice = finalPrice;
   }
 
-
-  if (updateData.quantity !== undefined) {
-    product.quantity = updateData.quantity;
+  if (updateData.isDraft === false && product.status === "DRAFT") {
+    product.status = "ACTIVE";
   }
 
-  if (updateData.images) {
-    product.images = updateData.images;
-  }
-
-  if (updateData.category) {
-    product.category = updateData.category;
-  }
-
-  if (updateData.subCategory) {
-    product.subCategory = updateData.subCategory;
-  }
-
-  if (updateData.type) {
-    product.type = updateData.type;
-  }
+  if (updateData.quantity !== undefined) product.quantity = updateData.quantity;
+  if (updateData.images) product.images = updateData.images;
+  if (updateData.category) product.category = updateData.category;
+  if (updateData.subCategory) product.subCategory = updateData.subCategory;
 
   await product.save();
+  return product;
+};
+
+// ─── Delete ─────────────────────────────────────────────────
+exports.deleteProductService = async (productId, sellerId) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOneAndDelete({ _id: productId, sellerId });
+
+  if (!product) throw new Error("Product not found or unauthorized");
 
   return product;
+};
+
+// ─── Hide ───────────────────────────────────────────────────
+exports.hideProductService = async (productId, sellerId) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOneAndUpdate(
+    { _id: productId, sellerId },
+    { status: "HIDDEN" },
+    { new: true }
+  );
+
+  if (!product) throw new Error("Product not found or unauthorized");
+
+  return product;
+};
+
+// ─── Unhide ─────────────────────────────────────────────────
+exports.unhideProductService = async (productId, sellerId) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOneAndUpdate(
+    { _id: productId, sellerId, status: "HIDDEN" },
+    { status: "ACTIVE" },
+    { new: true }
+  );
+
+  if (!product) throw new Error("Product not found, unauthorized, or not hidden");
+
+  return product;
+};
+
+// ─── Get my drafts ───────────────────────────────────────────
+exports.getMyDraftsService = async (sellerId) => {
+  const products = await Product.find({
+    sellerId,
+    status: "DRAFT"
+  }).sort({ createdAt: -1 });
+
+  return products;
+};
+
+// ─── Get draft by ID ─────────────────────────────────────────
+exports.getDraftByIdService = async (productId, sellerId) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOne({
+    _id: productId,
+    sellerId,
+    status: "DRAFT"
+  });
+
+  if (!product) throw new Error("Draft not found or unauthorized");
+
+  return product;
+};
+
+// ─── Get my rejected products ────────────────────────────────
+exports.getMyRejectedProductsService = async (sellerId) => {
+  const products = await Product.find({
+    sellerId,
+    status: "REJECTED"
+  }).sort({ createdAt: -1 });
+
+  return products;
+};
+
+// ─── Get my hidden products ──────────────────────────────────
+exports.getMyHiddenProductsService = async (sellerId) => {
+  const products = await Product.find({
+    sellerId,
+    status: "HIDDEN"
+  }).sort({ createdAt: -1 });
+
+  return products;
+};
+
+// ─── Resubmit rejected product ───────────────────────────────
+exports.resubmitProductService = async (productId, sellerId, updateData) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOne({
+    _id: productId,
+    sellerId,
+    status: "REJECTED"
+  });
+
+  if (!product) throw new Error("Rejected product not found or unauthorized");
+
+  // must provide updated title or description to resubmit
+  if (!updateData.title && !updateData.description) {
+    throw new Error("Provide updated title or description to resubmit");
+  }
+
+  const textToModerate = `
+    ${updateData.title || product.title}
+    ${updateData.description || product.description}
+  `;
+
+  const { isAllowed, reason } = await moderateText(textToModerate);
+
+  if (!isAllowed) {
+    product.moderationReason = reason;
+    await product.save();
+    throw new Error(`Resubmission rejected: ${reason}`);
+  }
+
+  // moderation passed — update and activate
+  if (updateData.title) product.title = updateData.title;
+  if (updateData.description) product.description = updateData.description;
+  product.status = "ACTIVE";
+  product.moderationReason = null;
+
+  await product.save();
+  return product;
+};
+
+// ─── Get all active with pagination ─────────────────────────
+exports.getAllActiveProductsService = async (query) => {
+  const {
+    category,
+    type,
+    minPrice,
+    maxPrice,
+    search,
+    page = 1,
+    limit = 10
+  } = query;
+
+  const filter = { status: "ACTIVE" };
+
+  if (category) filter.category = category;
+  if (type) filter.type = type;
+  if (search) filter.title = { $regex: search, $options: "i" };
+  if (minPrice || maxPrice) {
+    filter["price.finalPrice"] = {};
+    if (minPrice) filter["price.finalPrice"].$gte = Number(minPrice);
+    if (maxPrice) filter["price.finalPrice"].$lte = Number(maxPrice);
+  }
+
+  const total = await Product.countDocuments(filter);
+
+  const products = await Product.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((Number(page) - 1) * Number(limit))
+    .limit(Number(limit));
+
+  return {
+    products,
+    total,
+    page: Number(page),
+    totalPages: Math.ceil(total / Number(limit))
+  };
 };
