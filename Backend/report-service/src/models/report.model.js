@@ -1,58 +1,95 @@
 const mongoose = require("mongoose");
 
+const REASONS = {
+  PRODUCT: [
+    "FAKE_PRODUCT",
+    "MISLEADING_DESCRIPTION",
+    "WRONG_CATEGORY",
+    "SCAM",
+    "EXPLICIT_CONTENT"   // ← only this one gets auto-handled
+  ],
+  REVIEW: [
+    "FAKE_REVIEW",
+    "OFFENSIVE_LANGUAGE",
+    "SPAM"
+  ],
+  USER: [
+    "SEXUAL_HARASSMENT",
+    "ABUSIVE_BEHAVIOR",
+    "BOT_OR_FAKE_ACCOUNT",
+    "FRAUD"
+  ],
+  SELLER: [
+    "FAKE_SELLER",
+    "FRAUD",
+    "SCAM",
+    "BOT_OR_FAKE_ACCOUNT"
+  ]
+};
+
 const reportSchema = new mongoose.Schema(
   {
     reporterId: {
-      type: String,
-      required: true
-    },
-
-    targetId: {
-      type: String,
-      required: true
+      type: mongoose.Schema.Types.ObjectId,  
+      required: true,
+      index: true
     },
 
     targetType: {
       type: String,
-      enum: ["PRODUCT", "USER", "REVIEW"],
-      required: true
+      enum: ["PRODUCT", "REVIEW", "USER", "SELLER"], 
+      required: true,
+      index: true
+    },
+
+    targetId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      index: true
     },
 
     reason: {
       type: String,
-      enum: [
-        // Product
-        "SPAM",
-        "FAKE_PRODUCT",
-        "SCAM",
-        "COPYRIGHT",
-
-        // User
-        "FAKE_USER",
-        "SCAMMER",
-        "SPAM_ACCOUNT",
-
-        // Shared
-        "HARASSMENT",
-        "ABUSE",
-
-        // Review
-        "FAKE_REVIEW"
-      ],
       required: true
     },
 
     description: {
-      type: String
+      type: String,
+      maxlength: 500,
+      default: null
     },
 
     status: {
       type: String,
-      enum: ["PENDING", "AUTO_RESOLVED", "REVIEW_REQUIRED", "REJECTED"],
-      default: "PENDING"
+      enum: ["PENDING", "UNDER_REVIEW", "RESOLVED", "REJECTED"],
+      default: "PENDING",
+      index: true
     },
 
-    isAutoChecked: {
+    adminNotes: {
+      type: String,
+      default: null
+    },
+
+    actionTaken: {
+      type: String,
+      enum: [
+        "WARN_USER",
+        "SUSPEND_USER",
+        "BAN_USER",
+        "REMOVE_CONTENT",
+        "NO_ACTION",
+        null
+      ],
+      default: null
+    },
+
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null
+    },
+
+    autoResolved: {
       type: Boolean,
       default: false
     }
@@ -61,7 +98,10 @@ const reportSchema = new mongoose.Schema(
 );
 
 
-// Prevent duplicate reporting
-reportSchema.index({ reporterId: 1, targetId: 1 }, { unique: true });
+reportSchema.index(
+  { reporterId: 1, targetType: 1, targetId: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model("Report", reportSchema);
+module.exports.REASONS = REASONS;

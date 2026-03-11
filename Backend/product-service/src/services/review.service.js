@@ -82,7 +82,7 @@ exports.updateReviewService = async ({ reviewId, userId, rating, text, images })
   return review;
 };
 
-// ─── Delete Review ───────────────────────────────────────────
+// ---- Delete Review -------
 exports.deleteReviewService = async ({ reviewId, userId }) => {
 
   validateObjectId(reviewId, "review ID");
@@ -105,7 +105,7 @@ exports.deleteReviewService = async ({ reviewId, userId }) => {
   return { message: "Review deleted" };
 };
 
-// ─── Get Reviews by Product (with pagination) ────────────────
+// --- Get Reviews by Product (with pagination) ────────────────
 exports.getReviewsByProductService = async (productId, query) => {
 
   validateObjectId(productId, "product ID");
