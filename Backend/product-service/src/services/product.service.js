@@ -285,6 +285,7 @@ exports.getAllActiveProductsService = async (query) => {
     minPrice,
     maxPrice,
     search,
+    sort,
     page = 1,
     limit = 10
   } = query;
@@ -300,10 +301,28 @@ exports.getAllActiveProductsService = async (query) => {
     if (maxPrice) filter["price.finalPrice"].$lte = Number(maxPrice);
   }
 
+  // ─── Sorting ────────────────────────────────────────────
+  let sortOption = {};
+  switch (sort) {
+    case "price_low":
+      sortOption = { "price.finalPrice": 1 };
+      break;
+    case "price_high":
+      sortOption = { "price.finalPrice": -1 };
+      break;
+    case "rating":
+      sortOption = { averageRating: -1 };
+      break;
+    case "newest":
+    default:
+      sortOption = { createdAt: -1 };
+      break;
+  }
+
   const total = await Product.countDocuments(filter);
 
   const products = await Product.find(filter)
-    .sort({ createdAt: -1 })
+    .sort(sortOption)
     .skip((Number(page) - 1) * Number(limit))
     .limit(Number(limit));
 
@@ -313,4 +332,56 @@ exports.getAllActiveProductsService = async (query) => {
     page: Number(page),
     totalPages: Math.ceil(total / Number(limit))
   };
+};
+
+// ─── Reduce Stock (called by Order Service) ──────────────────
+exports.reduceProductStock = async (productId, quantity) => {
+  validateObjectId(productId, "product ID");
+
+  if (!quantity || quantity < 1) {
+    throw new Error("Quantity must be at least 1");
+  }
+
+  const product = await Product.findById(productId);
+
+  if (!product) throw new Error("Product not found");
+
+  if (product.type === "SERVICE") {
+    throw new Error("Stock reduction not applicable for services");
+  }
+
+  if (product.quantity < quantity) {
+    throw new Error(`Insufficient stock. Available: ${product.quantity}`);
+  }
+
+  product.quantity -= quantity;
+
+  // auto hide if stock hits 0
+  if (product.quantity === 0) {
+    product.status = "OUT_OF_STOCK";
+  }
+
+  await product.save();
+  return product;
+};
+
+// ─── Restore Stock (if order is cancelled) ───────────────────
+exports.restoreProductStock = async (productId, quantity) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findById(productId);
+
+  if (!product) throw new Error("Product not found");
+
+  if (product.type === "SERVICE") return; // services don't have stock
+
+  product.quantity += quantity;
+
+  // if it was out of stock, make it active again
+  if (product.status === "OUT_OF_STOCK") {
+    product.status = "ACTIVE";
+  }
+
+  await product.save();
+  return product;
 };

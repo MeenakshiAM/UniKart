@@ -1,177 +1,99 @@
 const Review = require("../models/Review");
-const Product = require("../models/Product");
-const reviewService = require("../services/review.service");
 const mongoose = require("mongoose");
+const reviewService = require("../services/review.service");
 
+// Create Review
 exports.createReview = async (req, res) => {
   try {
-
     const userId = req.user.userId;
-    const { id } = req.params;
-
+    const { id: productId } = req.params;
     const { rating, text, images } = req.body;
 
     const review = await reviewService.createReview({
-      productId: id,
-      userId,
-      rating,
-      text: text || "",
-      images: images || []
+      productId, userId, rating, text, images
     });
 
-    res.status(201).json({
-      success: true,
-      review
-    });
+    res.status(201).json({ success: true, review });
 
   } catch (error) {
-
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
-
+    console.error("CREATE REVIEW ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : error.message.includes("already reviewed") ? 409
+      : 400;
+    res.status(status).json({ success: false, message: error.message });
   }
 };
 
+// Get Reviews by Product
 exports.getReviewsByProduct = async (req, res) => {
-
   try {
-
     const { id } = req.params;
-    
-     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid product ID" });
-    }
+    const result = await reviewService.getReviewsByProductService(id, req.query);
 
-
-    const reviews = await Review.find({
-      productId: id,
-      status: "ACTIVE"
-    })
-    //.populate("userId", "name")
-    .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      count: reviews.length,
-      reviews
-    });
+    res.json({ success: true, ...result });
 
   } catch (error) {
-  console.error(error); // ← add this to every catch
-  res.status(500).json({ success: false, message: error.message });
-}
-
-};
-
-exports.deleteReview = async (req, res) => {
-
-  try {
-
-    const userId = req.user.userId;
-    const { reviewId } = req.params;
-
-    const review = await Review.findById(reviewId);
-
-    if (!review) {
-      return res.status(404).json({
-        message: "Review not found"
-      });
-    }
-
-    if (review.userId.toString() !== userId) {
-      return res.status(403).json({
-        message: "Not allowed to delete this review"
-      });
-    }
-
-    await review.deleteOne();
-
-    res.json({
-      success: true,
-      message: "Review deleted"
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    console.error("GET REVIEWS ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400 : 500;
+    res.status(status).json({ success: false, message: error.message });
   }
-
 };
 
-exports.getRatingStats = async (req, res) => {
-
-  try {
-
-    const { id } = req.params;
-
-    const stats = await reviewService.getRatingBreakdown(id);
-
-    res.json({
-      success: true,
-      stats
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
-  }
-
-};
-
+// Update Review
 exports.updateReview = async (req, res) => {
-
   try {
-
     const userId = req.user.userId;
     const { reviewId } = req.params;
-
     const { rating, text, images } = req.body;
 
-    const review = await Review.findById(reviewId);
-
-    if (!review) {
-      return res.status(404).json({
-        message: "Review not found"
-      });
-    }
-
-    if (review.userId.toString() !== userId) {
-      return res.status(403).json({
-        message: "Not allowed to update this review"
-      });
-    }
-
-    if (images && images.length > 3) {
-      return res.status(400).json({
-        message: "Maximum 3 images allowed"
-      });
-    }
-
-    if (rating) review.rating = rating;
-    if (text) review.text = text;
-    if (images) review.images = images;
-
-    await review.save();
-
-    res.json({
-      success: true,
-      review
+    const review = await reviewService.updateReviewService({
+      reviewId, userId, rating, text, images
     });
+
+    res.json({ success: true, review });
 
   } catch (error) {
-
-    res.status(500).json({
-      message: "Server error"
-    });
-
+    console.error("UPDATE REVIEW ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : error.message.includes("Not allowed") ? 403
+      : 400;
+    res.status(status).json({ success: false, message: error.message });
   }
+};
 
+// Delete Review
+exports.deleteReview = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { reviewId } = req.params;
+
+    await reviewService.deleteReviewService({ reviewId, userId });
+
+    res.json({ success: true, message: "Review deleted" });
+
+  } catch (error) {
+    console.error("DELETE REVIEW ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : error.message.includes("Not allowed") ? 403
+      : 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+// Get Rating Stats
+exports.getRatingStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const stats = await reviewService.getRatingBreakdown(id);
+
+    res.json({ success: true, stats });
+
+  } catch (error) {
+    console.error("GET RATING STATS ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400 : 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
 };

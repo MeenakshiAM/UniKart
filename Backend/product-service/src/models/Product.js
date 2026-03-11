@@ -6,46 +6,57 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 120,
+      maxlength: 120
     },
 
     description: {
       type: String,
       required: true,
-      maxlength: 2000,
+      maxlength: 2000
     },
 
     type: {
       type: String,
       enum: ["PRODUCT", "SERVICE"],
       required: true,
-      index: true,
+      index: true
     },
 
     category: {
       type: String,
+      enum: [
+        "ELECTRONICS",
+        "BOOKS",
+        "FURNITURE",
+        "CLOTHING",
+        "FOOD",
+        "SPORTS",
+        "BEAUTY",
+        "TOYS",
+        "OTHER"
+      ],
       required: true,
-      index: true,
+      index: true
     },
 
     subCategory: {
-      type: String,
+      type: String
     },
 
     price: {
       basePrice: {
         type: Number,
         required: true,
-        min: 0,
+        min: 0
       },
       commissionPercent: {
         type: Number,
-        default: 10,
+        default: 10
       },
       finalPrice: {
         type: Number,
-        required: true,
-      },
+        required: true
+      }
     },
 
     quantity: {
@@ -53,7 +64,7 @@ const productSchema = new mongoose.Schema(
       min: 0,
       required: function () {
         return this.type === "PRODUCT";
-      },
+      }
     },
 
     images: {
@@ -63,45 +74,41 @@ const productSchema = new mongoose.Schema(
           validator: function (arr) {
             return arr.length > 0;
           },
-          message: "At least one image required",
-        },
-      ],
+          message: "At least one image required"
+        }
+      ]
     },
 
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
+      index: true
     },
 
     status: {
       type: String,
-      enum: [
-        "DRAFT",
-        "ACTIVE",
-        "REJECTED",
-        "HIDDEN"
-      ],
+      enum: ["DRAFT", "ACTIVE", "REJECTED", "HIDDEN", "OUT_OF_STOCK"],
       required: true,
       index: true
     },
 
     moderationReason: {
       type: String,
-      default: null,
+      default: null
     },
 
-    ratings: {
-      average: {
-        type: Number,
-        default: 0,
-      },
-      count: {
-        type: Number,
-        default: 0,
-      },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
     },
+
+    reviewCount: {
+      type: Number,
+      default: 0
+    }
   },
   { timestamps: true }
 );

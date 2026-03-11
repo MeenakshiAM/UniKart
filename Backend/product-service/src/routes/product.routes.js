@@ -18,68 +18,36 @@ const {
   getDraftById,        // ← new
   getMyRejectedProducts, // ← new
   getMyHiddenProducts, // ← new
-  resubmitProduct      // ← new
+  resubmitProduct ,
+  reduceStock,
+  restoreStock 
 } = require("../controllers/product.controller");
 
 // Public - Marketplace Feed (with search/filter support)
+// ── Public ───────────────────────────────────────────────────
 router.get("/", getAllActiveProducts);
+router.get("/seller/:sellerId", getProductsBySellerId); // ← before /:id
 
-// Public - Single product
-router.get("/:id", getProductById);
-
-// Public - Seller profile view
-router.get("/seller/:sellerId", getProductsBySellerId);
-
-// Seller - Get own products
-router.get(
-  "/my",
-  authMiddleware,
-  roleMiddleware("SELLER"),
-  getMyProducts
-);
-
-// Seller - Create product
-router.post(
-  "/",
-  authMiddleware,
-  roleMiddleware("SELLER"),
-  createProduct
-);
-
-// Seller - Update product
-router.patch(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("SELLER"),
-  updateProduct
-);
-
-// Seller - Hide product
-router.patch(
-  "/:id/hide",
-  authMiddleware,
-  roleMiddleware("SELLER"),
-  hideProduct
-);
-
-// Seller - Delete product
-router.delete(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("SELLER"),
-  deleteProduct
-);
-
+// ── Seller dashboard routes ──────────────────────────────────
+router.get("/my", authMiddleware, roleMiddleware("SELLER"), getMyProducts);
 router.get("/my/drafts", authMiddleware, roleMiddleware("SELLER"), getMyDrafts);
+router.get("/my/drafts/:id", authMiddleware, roleMiddleware("SELLER"), getDraftById);
 router.get("/my/rejected", authMiddleware, roleMiddleware("SELLER"), getMyRejectedProducts);
 router.get("/my/hidden", authMiddleware, roleMiddleware("SELLER"), getMyHiddenProducts);
 
-// Seller - Draft by ID
-router.get("/my/drafts/:id", authMiddleware, roleMiddleware("SELLER"), getDraftById);
+// ── Public single product ────────────────────────────────────
+router.get("/:id", getProductById);                     // ← after all specific GET routes
 
-// Seller - Unhide
+// ── Seller actions ───────────────────────────────────────────
+router.post("/", authMiddleware, roleMiddleware("SELLER"), createProduct);
+router.patch("/:id", authMiddleware, roleMiddleware("SELLER"), updateProduct);
+router.patch("/:id/hide", authMiddleware, roleMiddleware("SELLER"), hideProduct);
 router.patch("/:id/unhide", authMiddleware, roleMiddleware("SELLER"), unhideProduct);
-
-// Seller - Resubmit rejected
 router.patch("/:id/resubmit", authMiddleware, roleMiddleware("SELLER"), resubmitProduct);
+router.delete("/:id", authMiddleware, roleMiddleware("SELLER"), deleteProduct);
+
+// ── Internal - order service ─────────────────────────────────
+router.patch("/:id/reduce-stock", authMiddleware, reduceStock);
+router.patch("/:id/restore-stock", authMiddleware, restoreStock);
+
 module.exports = router;

@@ -273,3 +273,50 @@ exports.resubmitProduct = async (req, res) => {
     res.status(status).json({ success: false, message: error.message });
   }
 };
+
+// Reduce stock - called internally by order service
+exports.reduceStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    const product = await productService.reduceProductStock(id, quantity);
+
+    res.status(200).json({
+      success: true,
+      message: "Stock updated",
+      remainingStock: product.quantity
+    });
+
+  } catch (error) {
+    console.log("REDUCE STOCK ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : error.message.includes("Insufficient") ? 400
+      : 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+// Restore stock - called internally when order is cancelled
+exports.restoreStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    const product = await productService.restoreProductStock(id, quantity);
+
+    res.status(200).json({
+      success: true,
+      message: "Stock restored",
+      remainingStock: product.quantity
+    });
+
+  } catch (error) {
+    console.log("RESTORE STOCK ERROR:", error.message);
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
