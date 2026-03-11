@@ -22,8 +22,18 @@ const {
   resubmitProduct,
   reduceStock,
   restoreStock,
-  adminHideProduct        // ← new
+  adminHideProduct       // ← new
 } = require("../controllers/product.controller");
+
+const upload = require("../middlewares/upload.middleware");
+
+router.post(
+  "/create",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  upload.array("images", 5),
+  createProduct
+);
 
 // ── Public ───────────────────────────────────────────────────
 router.get("/", getAllActiveProducts);
@@ -41,11 +51,11 @@ router.get("/my/out-of-stock", authMiddleware, roleMiddleware("SELLER"), getMyOu
 router.get("/:id", getProductById);
 
 // ── Seller actions ───────────────────────────────────────────
-router.post("/", authMiddleware, roleMiddleware("SELLER"), createProduct);
-router.patch("/:id", authMiddleware, roleMiddleware("SELLER"), updateProduct);
+//router.post("/", authMiddleware, roleMiddleware("SELLER"), createProduct);
+router.patch("/:id", authMiddleware, roleMiddleware("SELLER"),upload.array("images", 5), updateProduct);
 router.patch("/:id/hide", authMiddleware, roleMiddleware("SELLER"), hideProduct);
 router.patch("/:id/unhide", authMiddleware, roleMiddleware("SELLER"), unhideProduct);
-router.patch("/:id/resubmit", authMiddleware, roleMiddleware("SELLER"), resubmitProduct);
+router.patch("/:id/resubmit", authMiddleware, roleMiddleware("SELLER"),upload.array("images", 5), resubmitProduct);
 router.delete("/:id", authMiddleware, roleMiddleware("SELLER"), deleteProduct);
 
 // ── Internal - called by order service ───────────────────────

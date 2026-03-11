@@ -23,47 +23,71 @@ const moderateText = async (text) => {
   }
 };
 
-// --------- Create --------------
 exports.createProductService = async (productData, sellerId) => {
+
   const {
     title,
     description,
     type,
     category,
     subCategory,
-    basePrice,
-    quantity,
-    images
+    images,
+    isDraft
   } = productData;
+
+  const basePrice = Number(productData.basePrice || productData?.price?.basePrice);
+
+  const quantity = productData.quantity
+    ? Number(productData.quantity)
+    : 0;
+
+  if (isNaN(basePrice) || basePrice <= 0) {
+    throw new Error("Valid base price is required");
+  }
 
   const { isAllowed, reason } = await moderateText(`${title} ${description}`);
 
   let status;
-  if (productData.isDraft) {
+
+  if (isDraft === "true" || isDraft === true) {
     status = "DRAFT";
   } else {
     status = isAllowed ? "ACTIVE" : "REJECTED";
   }
 
   const commissionPercent = 10;
+
   const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
 
   const product = await Product.create({
+
     title,
     description,
     type,
     category,
     subCategory,
-    price: { basePrice, commissionPercent, finalPrice },
+
+    price: {
+      basePrice,
+      commissionPercent,
+      finalPrice
+    },
+
     quantity: type === "PRODUCT" ? quantity : undefined,
+
     images,
+
     sellerId,
+
     status,
+
     moderationReason: isAllowed ? null : reason
+
   });
 
   return { product };
 };
+
 
 // ------- Get by ID ----------
 exports.getProductByIdService = async (id) => {

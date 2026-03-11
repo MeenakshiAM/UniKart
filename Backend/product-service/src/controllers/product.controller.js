@@ -3,22 +3,39 @@ const productService = require("../services/product.service");
 // Create Product
 exports.createProduct = async (req, res) => {
   try {
+//console.log("hey im inside the catch error of contoller 111 !!")
     const sellerId = req.user.userId;
-    const result = await productService.createProductService(req.body, sellerId);
+
+    const images = req.files
+      ? req.files.map(file =>({
+      url: file.path,
+      public_id: file.filename
+    }))
+  : [];
+//console.log("hey im inside the catch error of contoller !!")
+    const productData = {
+      ...req.body,
+      images
+    };
+    console.log("hey im gonna enter the service  !!")
+    const result = await productService.createProductService(productData, sellerId);
 
     res.status(201).json({
       success: true,
-      message: "Product processed successfully",
+      message: "Product created successfully",
       product: result.product
     });
 
   } catch (error) {
-    console.log("CREATE PRODUCT ERROR:", error.message);
-    const status = error.name === "ValidationError" ? 400 : 500;
-    res.status(status).json({
+    console.log("hey im inside the catch error of contoller !!")
+    console.error("CREATE PRODUCT ERROR:");
+    console.error(error);
+
+    res.status(500).json({
       success: false,
-      message: error.message || "Server error"
+      message: error.message
     });
+
   }
 };
 
@@ -50,8 +67,9 @@ exports.getMyProducts = async (req, res) => {
       count: products.length,
       products
     });
-
+   
   } catch (error) {
+    console.log("hey im inside the catch error of contoller !!")
     console.log("GET MY PRODUCTS ERROR:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
@@ -92,11 +110,39 @@ exports.getProductsBySellerId = async (req, res) => {
 };
 
 // Update Product
+const cloudinary = require("../config/cloudinary");
+
 exports.updateProduct = async (req, res) => {
   try {
     const sellerId = req.user.userId;
     const { id } = req.params;
-    const updatedProduct = await productService.updateProductService(id, sellerId, req.body);
+
+    // prepare new images if uploaded
+    const newImages = req.files
+      ? req.files.map(file => ({ url: file.path, public_id: file.filename }))
+      : undefined;
+
+    if (newImages) {
+      // fetch old product to delete images
+      const oldProduct = await productService.getProductByIdService(id);
+
+      if (oldProduct.images && oldProduct.images.length > 0) {
+        for (const img of oldProduct.images) {
+          await cloudinary.uploader.destroy(img.public_id);
+        }
+      }
+    }
+
+    const updatedProductData = {
+      ...req.body,
+      ...(newImages && { images: newImages })
+    };
+
+    const updatedProduct = await productService.updateProductService(
+      id,
+      sellerId,
+      updatedProductData
+    );
 
     res.status(200).json({
       success: true,
@@ -119,6 +165,15 @@ exports.deleteProduct = async (req, res) => {
   try {
     const sellerId = req.user.userId;
     const { id } = req.params;
+
+    // fetch product to delete images
+    const product = await productService.getProductByIdService(id);
+    if (product.images && product.images.length > 0) {
+      for (const img of product.images) {
+        await cloudinary.uploader.destroy(img.public_id);
+      }
+    }
+
     await productService.deleteProductService(id, sellerId);
 
     res.status(200).json({
@@ -134,7 +189,6 @@ exports.deleteProduct = async (req, res) => {
     res.status(status).json({ success: false, message: error.message });
   }
 };
-
 // Hide Product
 exports.hideProduct = async (req, res) => {
   try {
@@ -251,12 +305,30 @@ exports.getMyHiddenProducts = async (req, res) => {
   }
 };
 
-// Resubmit rejected product
 exports.resubmitProduct = async (req, res) => {
   try {
     const sellerId = req.user.userId;
     const { id } = req.params;
-    const product = await productService.resubmitProductService(id, sellerId, req.body);
+
+    const newImages = req.files
+      ? req.files.map(file => ({ url: file.path, public_id: file.filename }))
+      : undefined;
+
+    if (newImages) {
+      const oldProduct = await productService.getProductByIdService(id);
+      if (oldProduct.images && oldProduct.images.length > 0) {
+        for (const img of oldProduct.images) {
+          await cloudinary.uploader.destroy(img.public_id);
+        }
+      }
+    }
+
+    const productData = {
+      ...req.body,
+      ...(newImages && { images: newImages })
+    };
+
+    const product = await productService.resubmitProductService(id, sellerId, productData);
 
     res.status(200).json({
       success: true,

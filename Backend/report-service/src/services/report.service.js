@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const axios = require("axios");
-const Report = require("../models/Report");
-const { REASONS } = require("../models/Report");
+const Report = require("../models/report.model");
+const { REASONS } = require("../models/report.model");
 const automationService = require("./automation.service"); // ← add this
 
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL;

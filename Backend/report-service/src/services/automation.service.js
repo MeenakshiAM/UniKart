@@ -1,5 +1,5 @@
 const axios = require("axios");
-const Report = require("../models/Report");
+const Report = require("../models/report.model");
 
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL;
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
