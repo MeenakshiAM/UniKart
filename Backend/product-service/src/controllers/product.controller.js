@@ -320,3 +320,40 @@ exports.restoreStock = async (req, res) => {
     res.status(status).json({ success: false, message: error.message });
   }
 };
+
+// Admin hide — called internally by report automation
+exports.adminHideProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await productService.adminHideProductService(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Product hidden by admin",
+      product
+    });
+
+  } catch (error) {
+    console.log("ADMIN HIDE ERROR:", error.message);
+    const status = error.message.includes("not found") ? 404 : 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+// Get my out of stock products
+exports.getMyOutOfStock = async (req, res) => {
+  try {
+    const sellerId = req.user.userId;
+    const products = await productService.getMyOutOfStockService(sellerId);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET OUT OF STOCK ERROR:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

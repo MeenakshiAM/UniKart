@@ -385,3 +385,27 @@ exports.restoreProductStock = async (productId, quantity) => {
   await product.save();
   return product;
 };
+
+// ─── Admin hide (called by report service) ───────────────────
+exports.adminHideProductService = async (productId) => {
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findByIdAndUpdate(
+    productId,
+    { status: "HIDDEN", hiddenBy: "ADMIN" },
+    { new: true }
+  );
+
+  if (!product) throw new Error("Product not found");
+  return product;
+};
+
+// ─── Get my out of stock ─────────────────────────────────────
+exports.getMyOutOfStockService = async (sellerId) => {
+  const products = await Product.find({
+    sellerId,
+    status: "OUT_OF_STOCK"
+  }).sort({ createdAt: -1 });
+
+  return products;
+};

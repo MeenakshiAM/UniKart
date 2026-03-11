@@ -13,20 +13,21 @@ const {
   updateProduct,
   deleteProduct,
   hideProduct,
-  unhideProduct,       // ← new
-  getMyDrafts,         // ← new
-  getDraftById,        // ← new
-  getMyRejectedProducts, // ← new
-  getMyHiddenProducts, // ← new
-  resubmitProduct ,
+  unhideProduct,
+  getMyDrafts,
+  getDraftById,
+  getMyRejectedProducts,
+  getMyHiddenProducts,
+  getMyOutOfStock,        // ← new
+  resubmitProduct,
   reduceStock,
-  restoreStock 
+  restoreStock,
+  adminHideProduct        // ← new
 } = require("../controllers/product.controller");
 
-// Public - Marketplace Feed (with search/filter support)
 // ── Public ───────────────────────────────────────────────────
 router.get("/", getAllActiveProducts);
-router.get("/seller/:sellerId", getProductsBySellerId); // ← before /:id
+router.get("/seller/:sellerId", getProductsBySellerId);
 
 // ── Seller dashboard routes ──────────────────────────────────
 router.get("/my", authMiddleware, roleMiddleware("SELLER"), getMyProducts);
@@ -34,9 +35,10 @@ router.get("/my/drafts", authMiddleware, roleMiddleware("SELLER"), getMyDrafts);
 router.get("/my/drafts/:id", authMiddleware, roleMiddleware("SELLER"), getDraftById);
 router.get("/my/rejected", authMiddleware, roleMiddleware("SELLER"), getMyRejectedProducts);
 router.get("/my/hidden", authMiddleware, roleMiddleware("SELLER"), getMyHiddenProducts);
+router.get("/my/out-of-stock", authMiddleware, roleMiddleware("SELLER"), getMyOutOfStock); // ← new
 
 // ── Public single product ────────────────────────────────────
-router.get("/:id", getProductById);                     // ← after all specific GET routes
+router.get("/:id", getProductById);
 
 // ── Seller actions ───────────────────────────────────────────
 router.post("/", authMiddleware, roleMiddleware("SELLER"), createProduct);
@@ -46,8 +48,11 @@ router.patch("/:id/unhide", authMiddleware, roleMiddleware("SELLER"), unhideProd
 router.patch("/:id/resubmit", authMiddleware, roleMiddleware("SELLER"), resubmitProduct);
 router.delete("/:id", authMiddleware, roleMiddleware("SELLER"), deleteProduct);
 
-// ── Internal - order service ─────────────────────────────────
+// ── Internal - called by order service ───────────────────────
 router.patch("/:id/reduce-stock", authMiddleware, reduceStock);
 router.patch("/:id/restore-stock", authMiddleware, restoreStock);
+
+// ── Internal - called by report automation service ───────────
+router.patch("/:id/admin-hide", adminHideProduct); // ← new, no role check — internal only
 
 module.exports = router;
