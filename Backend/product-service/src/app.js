@@ -12,6 +12,10 @@ app.use("/api/listings", listingRoutes);
 const productRoutes = require("./routes/product.routes");
 
 app.use("/api/products", productRoutes);
+// routes
+
+const reviewRoutes = require("./routes/review.routes");
+app.use("/api", reviewRoutes);
 
 
 module.exports = app;

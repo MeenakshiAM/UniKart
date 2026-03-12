@@ -2,20 +2,20 @@ const analyzeText = require("./textAnalyzer");
 const ModerationLog = require("../../models/moderationLog");
 
 const decideModeration = (toxicityScore) => {
-  if (toxicityScore < 0.3) {
+  if (toxicityScore < 0.4) {
     return {
       decision: "APPROVED",
       reason: "Low toxicity detected",
     };
   }
 
-  if (toxicityScore <= 0.7) {
+ /*  if (toxicityScore <= 0.7) {
     return {
       decision: "PENDING",
       reason: "Moderate toxicity, needs review",
     };
   }
-
+ */
   return {
     decision: "REJECTED",
     reason: "High toxicity detected",

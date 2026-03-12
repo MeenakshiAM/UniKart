@@ -1,19 +1,88 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, CheckCircle, AlertCircle, Loader2, CreditCard, Shield, Truck } from "lucide-react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RAZORPAY SCRIPT LOADER
+// ─────────────────────────────────────────────────────────────────────────────
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYMENT STATUS MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function PaymentModal({ status, message, onClose }) {
+  if (!status) return null;
+
+  const isSuccess = status === 'success';
+  const isLoading = status === 'loading';
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+        {isLoading && (
+          <>
+            <Loader2 className="w-16 h-16 text-indigo-600 mx-auto mb-4 animate-spin" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Payment</h3>
+            <p className="text-gray-500">{message || 'Please wait...'}</p>
+          </>
+        )}
+        {isSuccess && (
+          <>
+            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Successful! 🎉</h3>
+            <p className="text-gray-500 mb-6">{message || 'Your order has been placed.'}</p>
+            <button
+              onClick={onClose}
+              className="w-full py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors"
+            >
+              Continue Shopping
+            </button>
+          </>
+        )}
+        {status === 'error' && (
+          <>
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Failed</h3>
+            <p className="text-gray-500 mb-6">{message || 'Something went wrong.'}</p>
+            <button
+              onClick={onClose}
+              className="w-full py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors"
+            >
+              Try Again
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN CART COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 export default function Cart() {
   const [cartItems, setCartItems] = useState([]);
+  const [paymentModal, setPaymentModal] = useState({ status: null, message: '' });
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
     // Load cart from localStorage
     if (typeof window !== 'undefined') {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      // Add quantity to items that don't have it
       const cartWithQuantity = cart.map(item => ({
         ...item,
         quantity: item.quantity || 1
@@ -50,12 +119,160 @@ export default function Cart() {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
-  const tax = subtotal * 0.05; // 5% tax
+  const tax = subtotal * 0.05;
   const total = subtotal + tax;
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // RAZORPAY PAYMENT INTEGRATION
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // Get JWT token - UPDATE THIS LINE to match where you store your token
+  const getUserToken = () => {
+    return localStorage.getItem('authToken') || ''; // ← Change 'authToken' if needed
+  };
+
+  // Confirm payment with backend after Razorpay success
+  const confirmPayment = async (paymentResponse) => {
+    const userToken = getUserToken();
+
+    const response = await fetch('http://localhost:4001/api/payments/confirm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
+      },
+      body: JSON.stringify({
+        razorpayOrderId: paymentResponse.razorpay_order_id,
+        razorpayPaymentId: paymentResponse.razorpay_payment_id,
+        razorpaySignature: paymentResponse.razorpay_signature
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Payment verified - clear cart
+      clearCart();
+      setPaymentModal({ 
+        status: 'success', 
+        message: 'Your order has been placed successfully!' 
+      });
+    } else {
+      throw new Error(data.message || 'Payment verification failed');
+    }
+  };
+
+  // Initiate payment - create order and open Razorpay
+  const initiatePayment = async () => {
+    if (cartItems.length === 0) return;
+
+    try {
+      setIsCheckingOut(true);
+      setPaymentModal({ status: 'loading', message: 'Creating your order...' });
+
+      // Load Razorpay script
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay. Check your internet connection.');
+      }
+
+      const userToken = getUserToken();
+
+      // Create order on your backend
+      const response = await fetch('http://localhost:4001/api/payments/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({
+          orderId: 'order_' + Date.now(), // ← Temporary order ID for testing
+          amount: Math.round(total),
+          currency: 'INR'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create order');
+      }
+
+      // Close loading modal
+      setPaymentModal({ status: null, message: '' });
+
+      // Open Razorpay checkout
+      const options = {
+        key: data.data.key,
+        amount: data.data.amount,
+        currency: data.data.currency,
+        order_id: data.data.razorpayOrderId,
+        name: 'UniKart',
+        description: `Purchase of ${cartItems.length} item${cartItems.length > 1 ? 's' : ''}`,
+        image: '/logo.png',
+
+        // Called after successful payment
+        handler: async (paymentResponse) => {
+          setPaymentModal({ status: 'loading', message: 'Verifying your payment...' });
+          try {
+            await confirmPayment(paymentResponse);
+          } catch (err) {
+            setPaymentModal({ status: 'error', message: err.message });
+          }
+        },
+
+        // Prefill customer details (replace with real user data)
+        prefill: {
+          name: localStorage.getItem('userName') || 'Customer',
+          email: 'customer@college.edu',
+          contact: '9999999999'
+        },
+
+        // Called when user closes Razorpay modal
+        modal: {
+          ondismiss: () => {
+            setIsCheckingOut(false);
+            setPaymentModal({ status: null, message: '' });
+          }
+        },
+
+        theme: {
+          color: '#4F46E5' // Indigo color
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+
+      // Handle payment failure
+      rzp.on('payment.failed', (failResponse) => {
+        setPaymentModal({
+          status: 'error',
+          message: failResponse.error.description || 'Payment failed. Please try again.'
+        });
+      });
+
+      rzp.open();
+
+    } catch (error) {
+      console.error('Payment initiation failed:', error);
+      setPaymentModal({ status: 'error', message: error.message });
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
+  // ───────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        status={paymentModal.status}
+        message={paymentModal.message}
+        onClose={() => setPaymentModal({ status: null, message: '' })}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-8">
@@ -172,9 +389,24 @@ export default function Cart() {
                   </div>
                 </div>
 
-                <button className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-3 flex items-center justify-center gap-2">
-                  Proceed to Checkout
-                  <ArrowRight className="w-5 h-5" />
+                {/* PAYMENT BUTTON - TRIGGERS RAZORPAY */}
+                <button
+                  onClick={initiatePayment}
+                  disabled={isCheckingOut || cartItems.length === 0}
+                  className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-3 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isCheckingOut ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-5 h-5" />
+                      Pay ₹{Math.round(total).toLocaleString()}
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
                 </button>
 
                 <Link href="/shop">
@@ -186,11 +418,11 @@ export default function Cart() {
                 {/* Trust Badges */}
                 <div className="mt-6 pt-6 border-t border-gray-200 space-y-2 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    <span>Secure checkout</span>
+                    <Shield className="w-4 h-4 text-green-500" />
+                    <span>Secure Razorpay checkout</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
+                    <Truck className="w-4 h-4 text-green-500" />
                     <span>Free campus delivery</span>
                   </div>
                   <div className="flex items-center gap-2">
