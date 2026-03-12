@@ -1,14 +1,15 @@
 'use client';
 
-import { Search, Cake, Sparkles, BookOpen, Palette, Laptop } from "lucide-react";
+import { Search, Cake, Sparkles, BookOpen, Palette, Laptop, Package, Briefcase } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const categories = [
+  { id: "products", name: "Products", icon: Package, emoji: "🛍️", color: "bg-green-100 hover:bg-green-200 text-green-700" },
+  { id: "services", name: "Services", icon: Briefcase, emoji: "💼", color: "bg-purple-100 hover:bg-purple-200 text-purple-700" },
   { id: "cakes", name: "Cakes", icon: Cake, emoji: "🧁", color: "bg-pink-100 hover:bg-pink-200 text-pink-700" },
-  { id: "handmade", name: "Handmade", icon: Sparkles, emoji: "✨", color: "bg-purple-100 hover:bg-purple-200 text-purple-700" },
-  { id: "tutoring", name: "Tutoring", icon: BookOpen, emoji: "📚", color: "bg-green-100 hover:bg-green-200 text-green-700" },
-  { id: "art-crafts", name: "Art & Crafts", icon: Palette, emoji: "🎨", color: "bg-orange-100 hover:bg-orange-200 text-orange-700" },
-  { id: "tech-services", name: "Tech Services", icon: Laptop, emoji: "💻", color: "bg-blue-100 hover:bg-blue-200 text-blue-700" }
+  { id: "jewellery", name: "Jewellery", icon: Sparkles, emoji: "💎", color: "bg-yellow-100 hover:bg-yellow-200 text-yellow-700" },
+  { id: "tutoring", name: "Tutoring", icon: BookOpen, emoji: "📚", color: "bg-blue-100 hover:bg-blue-200 text-blue-700" },
+  { id: "mehendi", name: "Mehendi", icon: Palette, emoji: "🖌️", color: "bg-orange-100 hover:bg-orange-200 text-orange-700" }
 ];
 
 export default function Hero() {
@@ -32,18 +33,18 @@ export default function Hero() {
     <div className="hero-section">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         
-        {/* Hero Title - NOW VISIBLE */}
+        {/* Hero Title */}
         <div className="text-center mb-12 relative z-10">
           <h1 className="text-5xl md:text-6xl font-bold mb-4" style={{
             fontFamily: 'Playfair Display, serif',
-            color: 'blue',
+            color: 'white',
             textShadow: '0 2px 20px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.5)'
           }}>
             Discover Student Businesses<br />
             Right on Campus
           </h1>
           <p className="text-xl md:text-2xl" style={{
-            color: 'blue',
+            color: 'white',
             textShadow: '0 1px 10px rgba(0, 0, 0, 0.3)'
           }}>
             From handmade crafts to delicious treats, support your fellow students and shop local
