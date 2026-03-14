@@ -39,4 +39,19 @@ router.post(
   registerSeller
 );
 
+const upload = require("../middlewares/upload.middleware");
+
+router.patch(
+  "/profile-image",
+  authMiddleware,
+  upload.single("image"),
+  userController.uploadProfileImage
+);
+
+router.patch(
+  "/header-image",
+  authMiddleware,
+  upload.single("image"),
+  userController.uploadHeaderImage
+);
 module.exports = router;
