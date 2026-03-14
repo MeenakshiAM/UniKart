@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema(
   email: { 
     type: String, 
     required: true, 
-    unique: true 
+    unique: true,
+    lowercase: true
   },
 
   password: { 
@@ -20,7 +21,8 @@ const userSchema = new mongoose.Schema(
 
   registerNumber: { 
     type: String, 
-    required: true 
+    required: true,
+    unique: true
   }, // college registration
 
   dateOfBirth: { 
@@ -30,12 +32,21 @@ const userSchema = new mongoose.Schema(
   department: { 
     type: String 
   },
+  isEmailVerified: {
+  type: Boolean,
+  default: false
+},
 
+emailVerificationToken: {
+  type: String
+},
   isSeller: { 
     type: Boolean, 
     default: false 
   },
-
+  profileImage: {
+  type: String
+},
   role: {
     type: String,
     enum: ["BUYER", "SELLER", "ADMIN"],
@@ -61,6 +72,7 @@ const userSchema = new mongoose.Schema(
   suspensionEnd: {
     type: Date
   },
+  
 
   isBanned: {
     type: Boolean,

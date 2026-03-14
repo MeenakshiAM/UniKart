@@ -6,15 +6,21 @@ const {
   registerSeller,
   getAllUsers,
   login,
-  testAuth
+  testAuth,
+  uploadProfileImage,
+  verifyEmail
 } = require("../controllers/auth.controller");
 
 const authMiddleware = require("../middlewares/auth.middleware");
 const roleMiddleware = require("../middlewares/role.middleware");
 
+const upload = require("../middlewares/upload.middleware");
+
+
 // PUBLIC
 router.post("/register", registerUser);
 router.post("/login", login);
+
 
 // ADMIN ONLY
 router.get(
@@ -24,14 +30,16 @@ router.get(
   getAllUsers
 );
 
-// ANY AUTHENTICATED USER
+
+// AUTH TEST
 router.get(
   "/test",
   authMiddleware,
   testAuth
 );
 
-// ONLY BUYER → SELLER
+
+// BUYER → SELLER
 router.post(
   "/register-seller",
   authMiddleware,
@@ -39,19 +47,15 @@ router.post(
   registerSeller
 );
 
-const upload = require("../middlewares/upload.middleware");
 
+// PROFILE IMAGE
 router.patch(
   "/profile-image",
   authMiddleware,
   upload.single("image"),
-  userController.uploadProfileImage
+  uploadProfileImage
 );
 
-router.patch(
-  "/header-image",
-  authMiddleware,
-  upload.single("image"),
-  userController.uploadHeaderImage
-);
+router.get("/verify-email", verifyEmail);
+
 module.exports = router;

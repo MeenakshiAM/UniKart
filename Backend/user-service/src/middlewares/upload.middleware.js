@@ -5,7 +5,7 @@ const cloudinary = require("../config/cloudinary");
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: "unikart/products",
+    folder: "unikart/profile-images",
     allowed_formats: ["jpg", "jpeg", "png", "webp"]
   }
 });

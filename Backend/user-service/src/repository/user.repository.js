@@ -23,3 +23,4 @@ exports.updateUserById = async (userId, updateData) => {
     { new: true } // return updated document
   );
 };
+
