@@ -89,88 +89,32 @@ exports.registerSeller = async ({
 
   if (!user) throw new Error("User not found");
 
+  if (!user.emailVerified) {
+    throw new Error("Verify email before applying for seller");
+  }
+
   if (user.role === "SELLER" || user.role === "ADMIN") {
     throw new Error("User already has seller/admin privileges");
   }
 
   const existingProfile = await sellerRepo.getSellerByUserId(userId);
 
-  const isVerified =
-    isValidRegisterNumber(user.registerNumber) &&
-    isValidAge(user.dateOfBirth) &&
-    allowedDepartments.includes(user.department) &&
-    agreedToCommission === true;
-
-  const status = isVerified ? "ACTIVE" : "PENDING";
-
-  if (!existingProfile) {
-
-    const profile = await sellerRepo.createSellerProfile({
-      userId,
-      shopName,
-      shopDescription,
-      agreedToCommission,
-      status
-    });
-
-    let updatedUser = user;
-
-    if (status === "ACTIVE") {
-
-      await userRepo.updateUserById(userId, {
-        role: "SELLER",
-        isSeller: true
-      });
-
-      updatedUser = await userRepo.getUserById(userId);
-    }
-
-    return {
-      message:
-        status === "ACTIVE"
-          ? "Seller activated successfully"
-          : "Seller registered, pending verification",
-
-      profile,
-
-      user: {
-        id: updatedUser._id,
-        role: updatedUser.role,
-        isSeller: updatedUser.isSeller
-      }
-    };
+  if (existingProfile) {
+    throw new Error("Seller request already submitted");
   }
 
-  if (existingProfile && existingProfile.status === "PENDING") {
+  const profile = await sellerRepo.createSellerProfile({
+    userId,
+    shopName,
+    shopDescription,
+    agreedToCommission,
+    status: "PENDING"
+  });
 
-    const updatedProfile = await sellerRepo.updateSellerByUserId(userId, {
-      shopName,
-      shopDescription,
-      agreedToCommission,
-      status
-    });
-
-    if (status === "ACTIVE") {
-
-      await userRepo.updateUserById(userId, {
-        role: "SELLER",
-        isSeller: true
-      });
-
-    }
-
-    return {
-      message:
-        status === "ACTIVE"
-          ? "Seller activated successfully"
-          : "Seller details updated, still pending",
-
-      profile: updatedProfile
-    };
-  }
-
-  throw new Error("Seller already active");
-
+  return {
+    message: "Seller request submitted. Waiting for admin approval",
+    profile
+  };
 };
 
 // ------------------ GET USERS (ADMIN ONLY) ------------------
@@ -266,4 +210,30 @@ exports.verifyEmail = async (token) => {
   });
 
   return true;
+};
+
+//------user approval ------------
+exports.approveSeller = async (sellerId) => {
+
+  const seller = await sellerRepo.getSellerById(sellerId);
+
+  if (!seller) {
+    throw new Error("Seller not found");
+  }
+
+  if (seller.status === "ACTIVE") {
+    throw new Error("Seller already approved");
+  }
+
+  const updatedSeller = await sellerRepo.updateSellerStatus(
+    sellerId,
+    "ACTIVE"
+  );
+
+  await userRepo.updateUserById(seller.userId, {
+    role: "SELLER",
+    isSeller: true
+  });
+
+  return updatedSeller;
 };

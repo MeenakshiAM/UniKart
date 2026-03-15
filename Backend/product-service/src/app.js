@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 
-const listingRoutes = require("./routes/listing.routes");
+const listingRoutes = require("./routes/service.routes");
 
 const app = express();
 

@@ -19,3 +19,19 @@ exports.updateSellerByUserId = async (userId, data) => {
     { new: true }
   );
 };
+exports.updateSellerStatus = async (sellerId, status) => {
+  return SellerProfile.findByIdAndUpdate(
+    sellerId,
+    { status },
+    { new: true }
+  );
+};
+// READ by sellerId
+exports.getSellerById = async (sellerId) => {
+  return await SellerProfile.findById(sellerId);
+};
+
+// read all the pending sellers to do it 
+exports.getPendingSellers = async () => {
+  return await SellerProfile.find({ status: "PENDING" });
+};
