@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Star, Heart, ShoppingCart, Filter } from "lucide-react";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+import { useParams, useRouter } from "next/navigation";
+import { Star, Heart, ShoppingCart, ArrowLeft, Truck, Shield, RotateCcw, Flag, X } from "lucide-react";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
-// COMPLETE PRODUCT DATA - Enhanced with your exact images
-const sampleProducts = [
-  // PRODUCTS - Cakes & Baked Goods
+// SAME PRODUCT DATA AS BEFORE - keeping all 26 products
+const allProducts = [
+  // (Copy all your product data here - I'll include first few as example)
   { 
     id: 1, 
     name: "Chocolate Truffle Cake", 
@@ -117,7 +117,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Handmade Crafts
   { 
     id: 3, 
     name: "Handmade Scrunchies Set", 
@@ -208,7 +207,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Candles
   { 
     id: 5, 
     name: "Scented Soy Candles Set", 
@@ -290,7 +288,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Soaps
   { 
     id: 7, 
     name: "Organic Handmade Soaps", 
@@ -371,7 +368,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Invitation Cards
   { 
     id: 9, 
     name: "Custom Wedding Invitations", 
@@ -454,7 +450,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Pencil Pouches
   { 
     id: 11, 
     name: "Fabric Pencil Pouch", 
@@ -537,7 +532,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Bouquets
   { 
     id: 13, 
     name: "Fresh Rose Bouquet", 
@@ -620,7 +614,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Crochet
   { 
     id: 15, 
     name: "Crochet Handbag", 
@@ -703,7 +696,6 @@ const sampleProducts = [
     ]
   },
 
-  // PRODUCTS - Jewellery
   { 
     id: 17, 
     name: "Handmade Beaded Necklace", 
@@ -786,7 +778,6 @@ const sampleProducts = [
     ]
   },
 
-  // SERVICES - Tutoring
   { 
     id: 19, 
     name: "Math Tutoring", 
@@ -879,7 +870,6 @@ const sampleProducts = [
     ]
   },
 
-  // SERVICES - Mehendi
   { 
     id: 21, 
     name: "Bridal Mehendi Design", 
@@ -972,7 +962,6 @@ const sampleProducts = [
     ]
   },
 
-  // SERVICES - Saree Draping
   { 
     id: 23, 
     name: "Saree Draping", 
@@ -1024,7 +1013,6 @@ const sampleProducts = [
     ]
   },
 
-  // SERVICES - Art & Design
   { 
     id: 25, 
     name: "Custom Portrait Art", 
@@ -1066,7 +1054,6 @@ const sampleProducts = [
     ]
   },
 
-  // SERVICES - Tech
   { 
     id: 26, 
     name: "Laptop Repair Service", 
@@ -1119,77 +1106,46 @@ const sampleProducts = [
   }
 ];
 
-const categories = [
-  { id: "all", name: "All Items", type: "all" },
-  { id: "products", name: "🛍️ Products", type: "main" },
-  { id: "services", name: "💼 Services", type: "main" },
-  
-  // Product Subcategories
-  { id: "cakes", name: "Cakes & Baked Goods", type: "sub", parent: "products" },
-  { id: "handmade", name: "Handmade Crafts", type: "sub", parent: "products" },
-  { id: "candles", name: "Candles", type: "sub", parent: "products" },
-  { id: "soaps", name: "Soaps", type: "sub", parent: "products" },
-  { id: "invitation-cards", name: "Invitation Cards", type: "sub", parent: "products" },
-  { id: "pencil-pouches", name: "Pencil Pouches", type: "sub", parent: "products" },
-  { id: "bouquets", name: "Bouquets", type: "sub", parent: "products" },
-  { id: "crochet", name: "Crochet Items", type: "sub", parent: "products" },
-  { id: "jewellery", name: "Jewellery", type: "sub", parent: "products" },
-  
-  // Service Subcategories
-  { id: "tutoring", name: "Tutoring", type: "sub", parent: "services" },
-  { id: "mehendi", name: "Mehendi Designing", type: "sub", parent: "services" },
-  { id: "saree-draping", name: "Saree Draping", type: "sub", parent: "services" },
-  { id: "art-design", name: "Art & Design", type: "sub", parent: "services" },
-  { id: "tech", name: "Tech Services", type: "sub", parent: "services" }
+// Report Reasons
+const REPORT_REASONS = [
+  { id: "counterfeit", label: "Counterfeit or Fake Product", description: "This product is not authentic" },
+  { id: "misleading", label: "Misleading Information", description: "Product description or images are misleading" },
+  { id: "illegal", label: "Illegal or Regulated Goods", description: "Sale of prohibited items" },
+  { id: "scam", label: "Scam or Fraud", description: "Suspicious seller or pricing" },
+  { id: "inappropriate", label: "Inappropriate Content", description: "Contains offensive material" },
+  { id: "copyright", label: "Copyright Infringement", description: "Unauthorized use of copyrighted material" },
+  { id: "safety", label: "Health & Safety Concerns", description: "Product may be unsafe" },
+  { id: "other", label: "Other", description: "Something else" }
 ];
 
-export default function Shop() {
-  const searchParams = useSearchParams();
+export default function ProductDetail() {
+  const params = useParams();
   const router = useRouter();
-  const urlCategory = searchParams.get('category');
-  const urlSearch = searchParams.get('search');
+  const productId = parseInt(params.id);
   
-  const [selectedCategory, setSelectedCategory] = useState(urlCategory || "all");
-  const [searchQuery, setSearchQuery] = useState(urlSearch || "");
-  const [filteredProducts, setFilteredProducts] = useState(sampleProducts);
+  const [product, setProduct] = useState(null);
   const [wishlist, setWishlist] = useState([]);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState("");
+  const [additionalDetails, setAdditionalDetails] = useState("");
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   useEffect(() => {
+    const foundProduct = allProducts.find(p => p.id === productId);
+    setProduct(foundProduct);
+
     if (typeof window !== 'undefined') {
       const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
       setWishlist(savedWishlist);
     }
-  }, []);
+  }, [productId]);
 
-  useEffect(() => {
-    let filtered = sampleProducts;
-
-    // Filter by main category (products/services)
-    if (selectedCategory === "products") {
-      filtered = filtered.filter(p => p.category === "products");
-    } else if (selectedCategory === "services") {
-      filtered = filtered.filter(p => p.category === "services");
-    } else if (selectedCategory !== "all") {
-      // Filter by subcategory
-      filtered = filtered.filter(p => p.subcategory === selectedCategory);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.seller.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.shortDescription.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilteredProducts(filtered);
-  }, [selectedCategory, searchQuery]);
-
-  const toggleWishlist = (productId) => {
-    const newWishlist = wishlist.includes(productId) 
-      ? wishlist.filter(id => id !== productId)
-      : [...wishlist, productId];
+  const toggleWishlist = () => {
+    if (!product) return;
+    
+    const newWishlist = wishlist.includes(product.id) 
+      ? wishlist.filter(id => id !== product.id)
+      : [...wishlist, product.id];
     
     setWishlist(newWishlist);
     if (typeof window !== 'undefined') {
@@ -1198,19 +1154,17 @@ export default function Shop() {
     }
   };
 
-  const addToCart = (product) => {
+  const addToCart = () => {
+    if (!product) return;
+    
     if (typeof window !== 'undefined') {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      
-      // Check if product already exists in cart
       const existingItemIndex = cart.findIndex(item => item.id === product.id);
       
       if (existingItemIndex !== -1) {
-        // Product exists - increase quantity
         cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
         alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
       } else {
-        // New product - add to cart
         cart.push({ ...product, quantity: 1 });
         alert(`${product.name} added to cart!`);
       }
@@ -1220,192 +1174,411 @@ export default function Shop() {
     }
   };
 
-  const getCategoryName = () => {
-    if (selectedCategory === "all") return "All Items";
-    if (selectedCategory === "products") return "All Products";
-    if (selectedCategory === "services") return "All Services";
-    return categories.find(c => c.id === selectedCategory)?.name || "Products";
+  const handleReportSubmit = () => {
+    if (!selectedReason) {
+      alert("Please select a reason for reporting");
+      return;
+    }
+
+    // In a real app, this would send the report to your backend
+    const reportData = {
+      productId: product.id,
+      productName: product.name,
+      seller: product.seller,
+      reason: selectedReason,
+      details: additionalDetails,
+      timestamp: new Date().toISOString(),
+      reportedBy: "user" // In real app, would be actual user ID
+    };
+
+    // Save to localStorage (in real app, send to backend)
+    const existingReports = JSON.parse(localStorage.getItem('productReports') || '[]');
+    existingReports.push(reportData);
+    localStorage.setItem('productReports', JSON.stringify(existingReports));
+
+    setReportSubmitted(true);
+    
+    // Reset after 3 seconds
+    setTimeout(() => {
+      setShowReportModal(false);
+      setReportSubmitted(false);
+      setSelectedReason("");
+      setAdditionalDetails("");
+    }, 3000);
   };
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Product not found</h2>
+          <button onClick={() => router.push('/shop')} className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+            Back to Shop
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {getCategoryName()}
-          </h1>
-          <p className="text-gray-600">{filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'} found</p>
+        
+        {/* Back Button & Report Button */}
+        <div className="flex items-center justify-between mb-6">
+          <button 
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back to Shop</span>
+          </button>
+
+          {/* Report Button */}
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+          >
+            <Flag className="w-4 h-4" />
+            <span className="text-sm font-medium">Report Product</span>
+          </button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           
-          {/* Sidebar Filters */}
-          <div className="lg:w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-              <div className="flex items-center gap-2 mb-4">
-                <Filter className="w-5 h-5 text-gray-600" />
-                <h3 className="font-semibold text-gray-900">Categories</h3>
+          {/* Left - Image */}
+          <div>
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg mb-4">
+              <img 
+                src={product.image} 
+                alt={product.name}
+                className="w-full aspect-square object-cover"
+              />
+            </div>
+            
+            {/* Category Badge */}
+            <div className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${
+              product.category === 'services' 
+                ? 'bg-purple-100 text-purple-700' 
+                : 'bg-green-100 text-green-700'
+            }`}>
+              {product.category === 'services' ? '💼 Service' : '🛍️ Product'}
+            </div>
+          </div>
+
+          {/* Right - Details */}
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">{product.name}</h1>
+            
+            {/* Seller Info */}
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center text-2xl">
+                👤
               </div>
+              <div>
+                <p className="font-semibold text-gray-900">{product.seller}</p>
+                <p className="text-sm text-gray-600">Verified Seller</p>
+              </div>
+            </div>
 
-              <div className="space-y-2">
-                {/* All Items */}
-                <button
-                  onClick={() => setSelectedCategory("all")}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                    selectedCategory === "all"
-                      ? "bg-indigo-100 text-indigo-700 font-medium"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  All Items
-                </button>
-
-                {/* Main Categories */}
-                {categories.filter(c => c.type === "main").map(category => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition-colors font-semibold ${
-                      selectedCategory === category.id
-                        ? "bg-indigo-100 text-indigo-700"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {category.name}
-                  </button>
+            {/* Rating */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-1">
+                {[1,2,3,4,5].map(star => (
+                  <Star 
+                    key={star} 
+                    className={`w-5 h-5 ${star <= Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                  />
                 ))}
+              </div>
+              <span className="text-lg font-semibold">{product.rating}</span>
+              <span className="text-gray-600">({product.totalReviews} reviews)</span>
+            </div>
 
-                {/* Product Subcategories */}
-                <div className="pl-4 space-y-1">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mt-3 mb-2">Product Types</p>
-                  {categories.filter(c => c.parent === "products").map(category => (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                        selectedCategory === category.id
-                          ? "bg-indigo-100 text-indigo-700 font-medium"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {category.name}
-                    </button>
+            {/* Price */}
+            <div className="mb-6">
+              <div className="text-4xl font-bold text-indigo-600 mb-2">₹{product.price}</div>
+              <p className="text-gray-600">{product.category === 'services' ? 'Per session' : 'Inclusive of all taxes'}</p>
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <h3 className="font-semibold text-gray-900 mb-2 text-lg">Description</h3>
+              <p className="text-gray-700 leading-relaxed">{product.fullDescription}</p>
+            </div>
+
+            {/* Specifications */}
+            {product.specifications && product.specifications.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3 text-lg">Specifications</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  {product.specifications.map((spec, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-gray-600">{spec.label}:</span>
+                      <span className="font-medium text-gray-900">{spec.value}</span>
+                    </div>
                   ))}
                 </div>
+              </div>
+            )}
 
-                {/* Service Subcategories */}
-                <div className="pl-4 space-y-1">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mt-3 mb-2">Service Types</p>
-                  {categories.filter(c => c.parent === "services").map(category => (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                        selectedCategory === category.id
-                          ? "bg-indigo-100 text-indigo-700 font-medium"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {category.name}
-                    </button>
+            {/* Features */}
+            <div className="mb-8">
+              <h3 className="font-semibold text-gray-900 mb-3 text-lg">Key Features</h3>
+              <ul className="space-y-2">
+                {product.features.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <span className="text-green-500 mt-1">✓</span>
+                    <span className="text-gray-700">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 mb-8">
+              <button
+                onClick={addToCart}
+                className="flex-1 py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Add to Cart
+              </button>
+              <button
+                onClick={toggleWishlist}
+                className={`px-6 py-4 rounded-lg border-2 transition-all ${
+                  wishlist.includes(product.id)
+                    ? 'border-pink-500 bg-pink-50 text-pink-500'
+                    : 'border-gray-300 hover:border-pink-500'
+                }`}
+              >
+                <Heart className={`w-6 h-6 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
+              </button>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-200">
+              <div className="text-center">
+                <Truck className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                <p className="text-xs text-gray-600">Campus Delivery</p>
+              </div>
+              <div className="text-center">
+                <Shield className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                <p className="text-xs text-gray-600">Secure Payment</p>
+              </div>
+              <div className="text-center">
+                <RotateCcw className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                <p className="text-xs text-gray-600">Easy Returns</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">Customer Reviews</h2>
+          
+          {/* Rating Summary */}
+          <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="text-center">
+                <div className="text-6xl font-bold text-indigo-600 mb-2">{product.rating}</div>
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {[1,2,3,4,5].map(star => (
+                    <Star 
+                      key={star} 
+                      className={`w-6 h-6 ${star <= Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                    />
                   ))}
                 </div>
+                <p className="text-gray-600">Based on {product.totalReviews} reviews</p>
+              </div>
+              
+              <div className="space-y-2">
+                {[5,4,3,2,1].map(rating => {
+                  const percentage = rating === 5 ? 75 : rating === 4 ? 20 : 5;
+                  return (
+                    <div key={rating} className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600 w-12">{rating} star</span>
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-yellow-400 h-2 rounded-full" 
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm text-gray-600 w-12">{percentage}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
-          {/* Product Grid */}
-          <div className="flex-1">
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-lg">
-                <p className="text-xl text-gray-600">No items found</p>
-                <p className="text-gray-500 mt-2">Try adjusting your filters</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(product => (
-                  <div 
-                    key={product.id} 
-                    className="product-card group cursor-pointer"
-                    onClick={() => router.push(`/product/${product.id}`)}
-                  >
-                    
-                    {/* Product Image with Wishlist Heart */}
-                    <div className="aspect-square bg-gray-100 rounded-t-lg relative overflow-hidden">
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/400x400/6366f1/ffffff?text=' + encodeURIComponent(product.name);
-                        }}
-                      />
-                      
-                      {/* Category Badge */}
-                      <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold ${
-                        product.category === 'services' 
-                          ? 'bg-purple-500 text-white' 
-                          : 'bg-green-500 text-white'
-                      }`}>
-                        {product.category === 'services' ? '💼 Service' : '🛍️ Product'}
-                      </div>
-
-                      {/* Wishlist Heart Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent card click
-                          toggleWishlist(product.id);
-                        }}
-                        className={`absolute top-3 right-3 p-2 rounded-full transition-all ${
-                          wishlist.includes(product.id)
-                            ? 'bg-pink-500 text-white shadow-lg scale-110'
-                            : 'bg-white text-gray-400 hover:text-pink-500 hover:scale-110 shadow-md'
-                        }`}
-                        title={wishlist.includes(product.id) ? "Remove from wishlist" : "Add to wishlist"}
-                      >
-                        <Heart 
-                          className={`w-5 h-5 transition-all ${wishlist.includes(product.id) ? 'fill-current' : ''}`}
-                        />
-                      </button>
+          {/* Individual Reviews */}
+          <div className="space-y-6">
+            {product.reviews.map(review => (
+              <div key={review.id} className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center font-semibold text-indigo-600">
+                      {review.userName.charAt(0)}
                     </div>
-
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{product.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">by {product.seller}</p>
-                      <p className="text-xs text-gray-500 mb-3 line-clamp-2">{product.shortDescription}</p>
-
-                      <div className="flex items-center gap-1 mb-3">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-medium">{product.rating}</span>
-                        <span className="text-sm text-gray-500">({product.totalReviews})</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-gray-900">{review.userName}</h4>
+                        {review.verified && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Verified</span>
+                        )}
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-2xl font-bold text-indigo-600">₹{product.price}</span>
-                        
-                        {/* Add to Cart Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent card click
-                            addToCart(product);
-                          }}
-                          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
-                          title="Add to cart"
-                        >
-                          <ShoppingCart className="w-4 h-4" />
-                          <span>Add</span>
-                        </button>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-0.5">
+                          {[1,2,3,4,5].map(star => (
+                            <Star 
+                              key={star} 
+                              className={`w-4 h-4 ${star <= review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-500">{review.date}</span>
                       </div>
                     </div>
                   </div>
-                ))}
+                </div>
+                <h5 className="font-semibold text-gray-900 mb-2">{review.title}</h5>
+                <p className="text-gray-700 mb-3">{review.comment}</p>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <button className="hover:text-gray-700">👍 Helpful ({review.helpful})</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {!reportSubmitted ? (
+              <>
+                {/* Modal Header */}
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Flag className="w-6 h-6 text-red-600" />
+                    <h3 className="text-xl font-bold text-gray-900">Report Product</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-6">
+                  <p className="text-gray-600 mb-6">
+                    Help us understand what's wrong with <span className="font-semibold">{product.name}</span> by {product.seller}. Your report will be reviewed by our team.
+                  </p>
+
+                  {/* Reason Selection */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Why are you reporting this product? *
+                    </label>
+                    <div className="space-y-2">
+                      {REPORT_REASONS.map((reason) => (
+                        <label
+                          key={reason.id}
+                          className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedReason === reason.id
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="reason"
+                            value={reason.id}
+                            checked={selectedReason === reason.id}
+                            onChange={(e) => setSelectedReason(e.target.value)}
+                            className="mt-1 mr-3"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900">{reason.label}</div>
+                            <div className="text-sm text-gray-600">{reason.description}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Additional Details */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Additional Details (Optional)
+                    </label>
+                    <textarea
+                      value={additionalDetails}
+                      onChange={(e) => setAdditionalDetails(e.target.value)}
+                      placeholder="Please provide any additional information that might help us review this report..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                      rows="4"
+                    />
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> All reports are kept confidential. Our team will review this report and take appropriate action if the product violates our policies.
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowReportModal(false)}
+                      className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleReportSubmit}
+                      disabled={!selectedReason}
+                      className={`flex-1 px-6 py-3 font-semibold rounded-lg transition-colors ${
+                        selectedReason
+                          ? 'bg-red-600 text-white hover:bg-red-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Submit Report
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Success Message */
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Report Submitted</h3>
+                <p className="text-gray-600 mb-6">
+                  Thank you for helping us maintain a safe marketplace. Our team will review your report shortly.
+                </p>
+                <div className="text-sm text-gray-500">
+                  This window will close automatically...
+                </div>
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
 
       <Footer />
     </div>

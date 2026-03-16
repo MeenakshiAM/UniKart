@@ -37,14 +37,14 @@ export default function Hero() {
         <div className="text-center mb-12 relative z-10">
           <h1 className="text-5xl md:text-6xl font-bold mb-4" style={{
             fontFamily: 'Playfair Display, serif',
-            color: 'white',
+            color: 'blue',
             textShadow: '0 2px 20px rgba(0, 0, 0, 0.3), 0 0 40px rgba(99, 102, 241, 0.5)'
           }}>
             Discover Student Businesses<br />
             Right on Campus
           </h1>
           <p className="text-xl md:text-2xl" style={{
-            color: 'white',
+            color: 'blue',
             textShadow: '0 1px 10px rgba(0, 0, 0, 0.3)'
           }}>
             From handmade crafts to delicious treats, support your fellow students and shop local
