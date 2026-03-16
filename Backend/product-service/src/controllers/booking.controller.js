@@ -6,19 +6,14 @@ exports.createBooking = async (req, res) => {
 
     const bookingData = {
       ...req.body,
-      userId: req.user.id,
-      userName: req.user.name,
-      userEmail: req.user.email,
-      userPhone: req.user.phone || req.body.userPhone
+      userId: req.user.userId
     };
 
     const booking = await bookingService.createBooking(bookingData);
 
     return res.status(201).json({
       success: true,
-      message: booking.autoAccepted
-        ? "Booking confirmed automatically"
-        : "Booking created. Awaiting provider confirmation.",
+      message: "Booking created successfully",
       data: booking
     });
 
@@ -39,7 +34,7 @@ exports.confirmBooking = async (req, res) => {
   try {
 
     const { bookingId } = req.params;
-    const providerId = req.user.id;
+    const providerId = req.user.userId;
 
     const booking = await bookingService.confirmBooking(
       bookingId,
@@ -78,10 +73,7 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    const cancelledBy =
-      req.user.role === "SELLER"
-        ? req.user.id
-        : `user_${req.user.id}`;
+    const cancelledBy = req.user.userId;
 
     const booking = await bookingService.cancelBooking(
       bookingId,
@@ -112,7 +104,7 @@ exports.completeBooking = async (req, res) => {
   try {
 
     const { bookingId } = req.params;
-    const providerId = req.user.id;
+    const providerId = req.user.userId;
 
     const booking = await bookingService.completeBooking(
       bookingId,
@@ -141,7 +133,7 @@ exports.completeBooking = async (req, res) => {
 exports.getMyBookings = async (req, res) => {
   try {
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const filters = {
       status: req.query.status,
@@ -173,7 +165,7 @@ exports.getMyBookings = async (req, res) => {
 exports.getProviderBookings = async (req, res) => {
   try {
 
-    const providerId = req.user.id;
+    const providerId = req.user.userId;
 
     const filters = {
       status: req.query.status,
@@ -205,11 +197,11 @@ exports.getProviderBookings = async (req, res) => {
 
 
 
-// ==================== PROVIDER TODAY SCHEDULE ====================
+// ==================== TODAY SCHEDULE ====================
 exports.getTodaySchedule = async (req, res) => {
   try {
 
-    const providerId = req.user.id;
+    const providerId = req.user.userId;
 
     const bookings = await bookingService.getTodaySchedule(providerId);
 
@@ -236,11 +228,8 @@ exports.getBookingDetails = async (req, res) => {
 
     const { bookingId } = req.params;
 
-    const userId =
-      req.user.role === "BUYER" ? req.user.id : null;
-
-    const providerId =
-      req.user.role === "SELLER" ? req.user.id : null;
+    const userId = req.user.role === "BUYER" ? req.user.userId : null;
+    const providerId = req.user.role === "SELLER" ? req.user.userId : null;
 
     const booking = await bookingService.getBookingById(
       bookingId,
@@ -256,31 +245,6 @@ exports.getBookingDetails = async (req, res) => {
   } catch (error) {
 
     return res.status(404).json({
-      success: false,
-      message: error.message
-    });
-
-  }
-};
-
-
-
-// ==================== PROVIDER BOOKING STATS ====================
-exports.getProviderBookingStats = async (req, res) => {
-  try {
-
-    const providerId = req.user.id;
-
-    const stats = await bookingService.getProviderBookingStats(providerId);
-
-    return res.status(200).json({
-      success: true,
-      data: stats
-    });
-
-  } catch (error) {
-
-    return res.status(400).json({
       success: false,
       message: error.message
     });

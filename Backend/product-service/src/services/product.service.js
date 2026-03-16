@@ -1,435 +1,562 @@
-const axios = require("axios");
-const Product = require("../models/Product");
-const mongoose = require("mongoose");
+const productService = require("../services/product.service");
+const cloudinary = require("../config/cloudinary");
 
-// ----helper ..........
-const validateObjectId = (id, label = "ID") => {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new Error(`Invalid ${label}`);
-  }
-};
-
-// ------ Moderation helper ---------
-const moderateText = async (text) => {
+// Create Product
+exports.createProduct = async (req, res) => {
   try {
-    const response = await axios.post(
-      "http://localhost:4003/api/moderation/analyze",
-      { text }
-    );
-    return response.data; // { isAllowed, reason }
-  } catch (err) {
-    console.error("Moderation service unavailable:", err.message);
-    return { isAllowed: true, reason: null }; // fail open
+    const sellerId = req.user.userId;
+
+    const images = req.files
+      ? req.files.map(file => ({
+          url: file.path,
+          public_id: file.filename
+        }))
+      : [];
+
+    const productData = {
+      ...req.body,
+      images
+    };
+
+    const result = await productService.createProductService(productData, sellerId);
+
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      product: result.product
+    });
+
+  } catch (error) {
+    console.error("CREATE PRODUCT ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
-exports.createProductService = async (productData, sellerId) => {
 
-  const {
-    title,
-    description,
-    type,
-    category,
-    subCategory,
-    images,
-    isDraft
-  } = productData;
+// Get single product by ID (Public)
+exports.getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await productService.getProductByIdService(id);
 
-  const basePrice = Number(productData.basePrice || productData?.price?.basePrice);
+    res.status(200).json({
+      success: true,
+      product
+    });
 
-  const quantity = productData.quantity
-    ? Number(productData.quantity)
-    : 0;
+  } catch (error) {
+    console.log("GET PRODUCT BY ID ERROR:", error.message);
 
-  if (isNaN(basePrice) || basePrice <= 0) {
-    throw new Error("Valid base price is required");
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
+};
 
-  const { isAllowed, reason } = await moderateText(`${title} ${description}`);
 
-  let status;
+// Seller dashboard
+exports.getMyProducts = async (req, res) => {
+  try {
+    const sellerId = req.user.userId;
 
-  if (isDraft === "true" || isDraft === true) {
-    status = "DRAFT";
-  } else {
-    status = isAllowed ? "ACTIVE" : "REJECTED";
+    const products = await productService.getMyProductsService(sellerId);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET MY PRODUCTS ERROR:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
-
-  const commissionPercent = 10;
-
-  const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
-
-  const product = await Product.create({
-
-    title,
-    description,
-    type,
-    category,
-    subCategory,
-
-    price: {
-      basePrice,
-      commissionPercent,
-      finalPrice
-    },
-
-    quantity: type === "PRODUCT" ? quantity : undefined,
-
-    images,
-
-    sellerId,
-
-    status,
-
-    moderationReason: isAllowed ? null : reason
-
-  });
-
-  return { product };
 };
 
 
-// ------- Get by ID ----------
-exports.getProductByIdService = async (id) => {
-  validateObjectId(id, "product ID");
+// Marketplace browse
+exports.getAllActiveProducts = async (req, res) => {
+  try {
 
-  const product = await Product.findOne({ _id: id, status: "ACTIVE" });
+    const result = await productService.getAllActiveProductsService(req.query);
 
-  if (!product) throw new Error("Product not found");
+    res.status(200).json({
+      success: true,
+      ...result
+    });
 
-  return product;
-};
+  } catch (error) {
+    console.log("GET ACTIVE PRODUCTS ERROR:", error.message);
 
-// ---------- Get my products (seller) -----------
-exports.getMyProductsService = async (sellerId) => {
-  const products = await Product.find({ sellerId }).sort({ createdAt: -1 });
-  return products;
-};
-
-
-
-// ─── Get by seller ID (public profile) ─────────────────────
-exports.getProductsBySellerIdService = async (sellerId) => {
-  validateObjectId(sellerId, "seller ID");
-
-  const products = await Product.find({
-    sellerId,
-    status: "ACTIVE"
-  }).sort({ createdAt: -1 });
-
-  return products;
-};
-
-// ─── Update ─────────────────────────────────────────────────
-exports.updateProductService = async (productId, sellerId, updateData) => {
-  validateObjectId(productId, "product ID");
-
-  const product = await Product.findOne({ _id: productId, sellerId });
-
-  if (!product) throw new Error("Product not found or unauthorized");
-
-  if (updateData.type && updateData.type !== product.type) {
-    throw new Error("Product type cannot be changed after creation");
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
+};
 
-  if (updateData.title || updateData.description) {
-    const textToModerate = `
-      ${updateData.title || product.title}
-      ${updateData.description || product.description}
-    `;
 
-    const { isAllowed, reason } = await moderateText(textToModerate);
+// Public seller profile
+exports.getProductsBySellerId = async (req, res) => {
+  try {
 
-    if (!isAllowed) {
-      product.status = "REJECTED";
-      product.moderationReason = reason;
-      await product.save();
-      throw new Error("Content rejected by moderation");
+    const { sellerId } = req.params;
+
+    const products = await productService.getProductsBySellerIdService(sellerId);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET SELLER PRODUCTS ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400 : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// Update Product
+exports.updateProduct = async (req, res) => {
+  try {
+
+    const sellerId = req.user.userId;
+    const { id } = req.params;
+
+    const newImages = req.files
+      ? req.files.map(file => ({
+          url: file.path,
+          public_id: file.filename
+        }))
+      : undefined;
+
+    if (newImages) {
+
+      const oldProduct = await productService.getProductByIdForSellerService(id, sellerId);
+
+      if (oldProduct.images && oldProduct.images.length > 0) {
+        for (const img of oldProduct.images) {
+          await cloudinary.uploader.destroy(img.public_id);
+        }
+      }
     }
 
-    product.status = "ACTIVE";
-    product.moderationReason = null;
-    if (updateData.title) product.title = updateData.title;
-    if (updateData.description) product.description = updateData.description;
+    const updatedProductData = {
+      ...req.body,
+      ...(newImages && { images: newImages })
+    };
+
+    const updatedProduct = await productService.updateProductService(
+      id,
+      sellerId,
+      updatedProductData
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      product: updatedProduct
+    });
+
+  } catch (error) {
+    console.log("UPDATE PRODUCT ERROR:", error.message);
+
+    const status = error.message.includes("not found") ? 404
+      : error.message.includes("rejected") ? 400
+      : error.message.includes("Invalid") ? 400
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
+};
 
-  if (updateData.price?.basePrice) {
-    const commissionPercent = 10;
-    const basePrice = updateData.price.basePrice;
-    const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
-    product.price.basePrice = basePrice;
-    product.price.commissionPercent = commissionPercent;
-    product.price.finalPrice = finalPrice;
+
+// Delete Product
+exports.deleteProduct = async (req, res) => {
+  try {
+
+    const sellerId = req.user.userId;
+    const { id } = req.params;
+
+    const product = await productService.getProductByIdForSellerService(id, sellerId);
+
+    if (product.images && product.images.length > 0) {
+      for (const img of product.images) {
+        await cloudinary.uploader.destroy(img.public_id);
+      }
+    }
+
+    await productService.deleteProductService(id, sellerId);
+
+    res.status(200).json({
+      success: true,
+      message: "Product deleted successfully"
+    });
+
+  } catch (error) {
+    console.log("DELETE PRODUCT ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
+};
 
-  if (updateData.isDraft === false && product.status === "DRAFT") {
-    product.status = "ACTIVE";
+
+// Hide Product
+exports.hideProduct = async (req, res) => {
+  try {
+
+    const sellerId = req.user.userId;
+    const { id } = req.params;
+
+    const product = await productService.hideProductService(id, sellerId);
+
+    res.status(200).json({
+      success: true,
+      message: "Product hidden",
+      product
+    });
+
+  } catch (error) {
+    console.log("HIDE PRODUCT ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
-
-  if (updateData.quantity !== undefined) product.quantity = updateData.quantity;
-  if (updateData.images) product.images = updateData.images;
-  if (updateData.category) product.category = updateData.category;
-  if (updateData.subCategory) product.subCategory = updateData.subCategory;
-
-  await product.save();
-  return product;
 };
 
-// ─── Delete ─────────────────────────────────────────────────
-exports.deleteProductService = async (productId, sellerId) => {
-  validateObjectId(productId, "product ID");
 
-  const product = await Product.findOneAndDelete({ _id: productId, sellerId });
+// Unhide Product
+exports.unhideProduct = async (req, res) => {
+  try {
 
-  if (!product) throw new Error("Product not found or unauthorized");
+    const sellerId = req.user.userId;
+    const { id } = req.params;
 
-  return product;
-};
+    const product = await productService.unhideProductService(id, sellerId);
 
-// ─── Hide ───────────────────────────────────────────────────
-exports.hideProductService = async (productId, sellerId) => {
-  validateObjectId(productId, "product ID");
+    res.status(200).json({
+      success: true,
+      message: "Product is now active",
+      product
+    });
 
-  const product = await Product.findOneAndUpdate(
-    { _id: productId, sellerId },
-    { status: "HIDDEN" },
-    { new: true }
-  );
+  } catch (error) {
+    console.log("UNHIDE PRODUCT ERROR:", error.message);
 
-  if (!product) throw new Error("Product not found or unauthorized");
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
 
-  return product;
-};
-
-// ─── Unhide ─────────────────────────────────────────────────
-exports.unhideProductService = async (productId, sellerId) => {
-  validateObjectId(productId, "product ID");
-
-  const product = await Product.findOneAndUpdate(
-    { _id: productId, sellerId, status: "HIDDEN" },
-    { status: "ACTIVE" },
-    { new: true }
-  );
-
-  if (!product) throw new Error("Product not found, unauthorized, or not hidden");
-
-  return product;
-};
-
-// ─── Get my drafts ───────────────────────────────────────────
-exports.getMyDraftsService = async (sellerId) => {
-  const products = await Product.find({
-    sellerId,
-    status: "DRAFT"
-  }).sort({ createdAt: -1 });
-
-  return products;
-};
-
-// ─── Get draft by ID ─────────────────────────────────────────
-exports.getDraftByIdService = async (productId, sellerId) => {
-  validateObjectId(productId, "product ID");
-
-  const product = await Product.findOne({
-    _id: productId,
-    sellerId,
-    status: "DRAFT"
-  });
-
-  if (!product) throw new Error("Draft not found or unauthorized");
-
-  return product;
-};
-
-// ─── Get my rejected products ────────────────────────────────
-exports.getMyRejectedProductsService = async (sellerId) => {
-  const products = await Product.find({
-    sellerId,
-    status: "REJECTED"
-  }).sort({ createdAt: -1 });
-
-  return products;
-};
-
-// ─── Get my hidden products ──────────────────────────────────
-exports.getMyHiddenProductsService = async (sellerId) => {
-  const products = await Product.find({
-    sellerId,
-    status: "HIDDEN"
-  }).sort({ createdAt: -1 });
-
-  return products;
-};
-
-// ─── Resubmit rejected product ───────────────────────────────
-exports.resubmitProductService = async (productId, sellerId, updateData) => {
-  validateObjectId(productId, "product ID");
-
-  const product = await Product.findOne({
-    _id: productId,
-    sellerId,
-    status: "REJECTED"
-  });
-
-  if (!product) throw new Error("Rejected product not found or unauthorized");
-
-  // must provide updated title or description to resubmit
-  if (!updateData.title && !updateData.description) {
-    throw new Error("Provide updated title or description to resubmit");
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
-
-  const textToModerate = `
-    ${updateData.title || product.title}
-    ${updateData.description || product.description}
-  `;
-
-  const { isAllowed, reason } = await moderateText(textToModerate);
-
-  if (!isAllowed) {
-    product.moderationReason = reason;
-    await product.save();
-    throw new Error(`Resubmission rejected: ${reason}`);
-  }
-
-  // moderation passed — update and activate
-  if (updateData.title) product.title = updateData.title;
-  if (updateData.description) product.description = updateData.description;
-  product.status = "ACTIVE";
-  product.moderationReason = null;
-
-  await product.save();
-  return product;
 };
 
-// ─── Get all active with pagination ─────────────────────────
-exports.getAllActiveProductsService = async (query) => {
-  const {
-    category,
-    type,
-    minPrice,
-    maxPrice,
-    search,
-    sort,
-    page = 1,
-    limit = 10
-  } = query;
 
-  const filter = { status: "ACTIVE" };
+// Drafts
+exports.getMyDrafts = async (req, res) => {
+  try {
 
-  if (category) filter.category = category;
-  if (type) filter.type = type;
-  if (search) filter.title = { $regex: search, $options: "i" };
-  if (minPrice || maxPrice) {
-    filter["price.finalPrice"] = {};
-    if (minPrice) filter["price.finalPrice"].$gte = Number(minPrice);
-    if (maxPrice) filter["price.finalPrice"].$lte = Number(maxPrice);
+    const sellerId = req.user.userId;
+
+    const products = await productService.getMyDraftsService(sellerId);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET MY DRAFTS ERROR:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
-
-  // ─── Sorting ────────────────────────────────────────────
-  let sortOption = {};
-  switch (sort) {
-    case "price_low":
-      sortOption = { "price.finalPrice": 1 };
-      break;
-    case "price_high":
-      sortOption = { "price.finalPrice": -1 };
-      break;
-    case "rating":
-      sortOption = { averageRating: -1 };
-      break;
-    case "newest":
-    default:
-      sortOption = { createdAt: -1 };
-      break;
-  }
-
-  const total = await Product.countDocuments(filter);
-
-  const products = await Product.find(filter)
-    .sort(sortOption)
-    .skip((Number(page) - 1) * Number(limit))
-    .limit(Number(limit));
-
-  return {
-    products,
-    total,
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit))
-  };
 };
 
-// ─── Reduce Stock (called by Order Service) ──────────────────
-exports.reduceProductStock = async (productId, quantity) => {
-  validateObjectId(productId, "product ID");
 
-  if (!quantity || quantity < 1) {
-    throw new Error("Quantity must be at least 1");
+// Draft by ID
+exports.getDraftById = async (req, res) => {
+  try {
+
+    const sellerId = req.user.userId;
+    const { id } = req.params;
+
+    const product = await productService.getDraftByIdService(id, sellerId);
+
+    res.status(200).json({
+      success: true,
+      product
+    });
+
+  } catch (error) {
+    console.log("GET DRAFT BY ID ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
   }
-
-  const product = await Product.findById(productId);
-
-  if (!product) throw new Error("Product not found");
-
-  if (product.type === "SERVICE") {
-    throw new Error("Stock reduction not applicable for services");
-  }
-
-  if (product.quantity < quantity) {
-    throw new Error(`Insufficient stock. Available: ${product.quantity}`);
-  }
-
-  product.quantity -= quantity;
-
-  // auto hide if stock hits 0
-  if (product.quantity === 0) {
-    product.status = "OUT_OF_STOCK";
-  }
-
-  await product.save();
-  return product;
 };
 
-// ─── Restore Stock (if order is cancelled) ───────────────────
-exports.restoreProductStock = async (productId, quantity) => {
-  validateObjectId(productId, "product ID");
 
-  const product = await Product.findById(productId);
+// Rejected products
+exports.getMyRejectedProducts = async (req, res) => {
+  try {
 
-  if (!product) throw new Error("Product not found");
+    const sellerId = req.user.userId;
 
-  if (product.type === "SERVICE") return; // services don't have stock
+    const products = await productService.getMyRejectedProductsService(sellerId);
 
-  product.quantity += quantity;
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
 
-  // if it was out of stock, make it active again
-  if (product.status === "OUT_OF_STOCK") {
-    product.status = "ACTIVE";
+  } catch (error) {
+    console.log("GET REJECTED PRODUCTS ERROR:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
-
-  await product.save();
-  return product;
 };
 
-// ─── Admin hide (called by report service) ───────────────────
-exports.adminHideProductService = async (productId) => {
-  validateObjectId(productId, "product ID");
 
-  const product = await Product.findByIdAndUpdate(
-    productId,
-    { status: "HIDDEN", hiddenBy: "ADMIN" },
-    { new: true }
-  );
+// Hidden products
+exports.getMyHiddenProducts = async (req, res) => {
+  try {
 
-  if (!product) throw new Error("Product not found");
-  return product;
+    const sellerId = req.user.userId;
+
+    const products = await productService.getMyHiddenProductsService(sellerId);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET HIDDEN PRODUCTS ERROR:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
 };
 
-// ─── Get my out of stock ─────────────────────────────────────
-exports.getMyOutOfStockService = async (sellerId) => {
-  const products = await Product.find({
-    sellerId,
-    status: "OUT_OF_STOCK"
-  }).sort({ createdAt: -1 });
 
-  return products;
+// Resubmit rejected product
+exports.resubmitProduct = async (req, res) => {
+  try {
+
+    const sellerId = req.user.userId;
+    const { id } = req.params;
+
+    const newImages = req.files
+      ? req.files.map(file => ({
+          url: file.path,
+          public_id: file.filename
+        }))
+      : undefined;
+
+    if (newImages) {
+
+      const oldProduct = await productService.getProductByIdForSellerService(id, sellerId);
+
+      if (oldProduct.images && oldProduct.images.length > 0) {
+        for (const img of oldProduct.images) {
+          await cloudinary.uploader.destroy(img.public_id);
+        }
+      }
+    }
+
+    const productData = {
+      ...req.body,
+      ...(newImages && { images: newImages })
+    };
+
+    const product = await productService.resubmitProductService(id, sellerId, productData);
+
+    res.status(200).json({
+      success: true,
+      message: "Product resubmitted for admin approval",
+      product
+    });
+
+  } catch (error) {
+    console.log("RESUBMIT PRODUCT ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : error.message.includes("rejected") ? 400
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// Reduce stock (order service)
+exports.reduceStock = async (req, res) => {
+  try {
+
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    const product = await productService.reduceProductStock(id, quantity);
+
+    res.status(200).json({
+      success: true,
+      message: "Stock updated",
+      remainingStock: product.quantity
+    });
+
+  } catch (error) {
+    console.log("REDUCE STOCK ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : error.message.includes("Insufficient") ? 400
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// Restore stock
+exports.restoreStock = async (req, res) => {
+  try {
+
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    const product = await productService.restoreProductStock(id, quantity);
+
+    res.status(200).json({
+      success: true,
+      message: "Stock restored",
+      remainingStock: product.quantity
+    });
+
+  } catch (error) {
+    console.log("RESTORE STOCK ERROR:", error.message);
+
+    const status = error.message.includes("Invalid") ? 400
+      : error.message.includes("not found") ? 404
+      : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// Admin hide
+exports.adminHideProduct = async (req, res) => {
+  try {
+
+    const { id } = req.params;
+
+    const product = await productService.adminHideProductService(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Product hidden by admin",
+      product
+    });
+
+  } catch (error) {
+    console.log("ADMIN HIDE ERROR:", error.message);
+
+    const status = error.message.includes("not found") ? 404 : 500;
+
+    res.status(status).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// Out of stock products
+exports.getMyOutOfStock = async (req, res) => {
+  try {
+
+    const sellerId = req.user.userId;
+
+    const products = await productService.getMyOutOfStockService(sellerId);
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      products
+    });
+
+  } catch (error) {
+    console.log("GET OUT OF STOCK ERROR:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
 };

@@ -2,13 +2,17 @@ const mongoose = require("mongoose");
 
 const reviewSchema = new mongoose.Schema(
 {
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Product",
-    required: true,
-    index: true
-  },
+  targetType: {
+  type: String,
+  enum: ["PRODUCT", "SERVICE"],
+  required: true
+},
 
+targetId: {
+  type: mongoose.Schema.Types.ObjectId,
+  required: true,
+  index: true
+},
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -55,7 +59,9 @@ const reviewSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
-// prevent multiple reviews by same user for same product
-reviewSchema.index({ productId: 1, userId: 1 }, { unique: true });
+reviewSchema.index(
+  { targetId: 1, userId: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model("Review", reviewSchema);

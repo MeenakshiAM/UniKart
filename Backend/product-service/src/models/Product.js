@@ -17,7 +17,7 @@ const productSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["PRODUCT", "SERVICE"],
+      enum: ["PRODUCT"],
       required: true,
       index: true
     },
@@ -88,7 +88,7 @@ const productSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["DRAFT", "ACTIVE", "REJECTED", "HIDDEN", "OUT_OF_STOCK"],
+      enum: ["DRAFT", "ACTIVE", "REJECTED", "HIDDEN", "OUT_OF_STOCK","PENDING_APPROVAL"],
       required: true,
       index: true
     },

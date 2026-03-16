@@ -429,3 +429,18 @@ exports.getMyOutOfStock = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+exports.getProductByIdForSellerService = async (productId, sellerId) => {
+
+  validateObjectId(productId, "product ID");
+
+  const product = await Product.findOne({
+    _id: productId,
+    sellerId
+  });
+
+  if (!product) {
+    throw new Error("Product not found or unauthorized");
+  }
+
+  return product;
+};

@@ -1,74 +1,91 @@
 const Review = require("../models/Review");
 const Product = require("../models/Product");
+const Service = require("../models/Service");
 const mongoose = require("mongoose");
 
-// ─── helper ─────────────────────────────────────────────────
-const validateObjectId = (id, label = "ID") => {
+const validateObjectId = (id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new Error(`Invalid ${label}`);
+    throw new Error("Invalid ID");
   }
 };
 
-// ─── Create Review ───────────────────────────────────────────
-// ─── Create Review ───────────────────────────────────────────
-exports.createReview = async ({ productId, userId, rating, text, images }) => {
 
-  validateObjectId(productId, "product ID");
 
-  // check product exists
-  const product = await Product.findById(productId);
-  if (!product) throw new Error("Product not found");
+// ================= CREATE REVIEW =================
+exports.createReview = async ({
+  targetType,
+  targetId,
+  userId,
+  rating,
+  text,
+  images
+}) => {
 
-  // prevent reviewing inactive products
-  if (product.status !== "ACTIVE") {
-    throw new Error("Cannot review this product");
+  validateObjectId(targetId);
+
+  if (rating < 1 || rating > 5) {
+    throw new Error("Rating must be between 1 and 5");
   }
 
-  // prevent seller from reviewing their own product
-  if (product.sellerId.toString() === userId) {
-    throw new Error("You cannot review your own product");
+  if (images && images.length > 3) {
+    throw new Error("Maximum 3 images allowed");
   }
 
-  // check duplicate review
-  const existingReview = await Review.findOne({ productId, userId });
-  if (existingReview) throw new Error("You have already reviewed this product");
+  let target;
 
-  // rating validation
-  if (rating < 1 || rating > 5) throw new Error("Rating must be between 1 and 5");
+  if (targetType === "PRODUCT") {
+    target = await Product.findById(targetId);
+  }
 
-  // image validation
-  if (images && images.length > 3) throw new Error("Maximum 3 images allowed");
+  if (targetType === "SERVICE") {
+    target = await Service.findById(targetId);
+  }
+
+  if (!target) throw new Error("Target not found");
+
+  const existing = await Review.findOne({
+    targetId,
+    userId
+  });
+
+  if (existing) {
+    throw new Error("You already reviewed this item");
+  }
 
   const review = await Review.create({
-    productId,
+    targetType,
+    targetId,
     userId,
     rating,
     text,
     images
   });
 
-  // sync product rating
-  await exports.updateProductRating(productId);
+  await exports.updateRating(targetId, targetType);
 
   return review;
 };
-// ─── Update Review ───────────────────────────────────────────
-exports.updateReviewService = async ({ reviewId, userId, rating, text, images }) => {
 
-  validateObjectId(reviewId, "review ID");
+
+
+// ================= UPDATE REVIEW =================
+exports.updateReview = async ({
+  reviewId,
+  userId,
+  rating,
+  text,
+  images
+}) => {
+
+  validateObjectId(reviewId);
 
   const review = await Review.findById(reviewId);
 
   if (!review) throw new Error("Review not found");
 
   if (review.userId.toString() !== userId) {
-    throw new Error("Not allowed to update this review");
+    throw new Error("Not allowed");
   }
-
-  if (rating < 1 || rating > 5) throw new Error("Rating must be between 1 and 5");
-
-
-  if (images && images.length > 3) throw new Error("Maximum 3 images allowed");
 
   if (rating != null) review.rating = rating;
   if (text != null) review.text = text;
@@ -76,123 +93,95 @@ exports.updateReviewService = async ({ reviewId, userId, rating, text, images })
 
   await review.save();
 
-  // sync product rating since rating may have changed
-  await exports.updateProductRating(review.productId);
+  await exports.updateRating(review.targetId, review.targetType);
 
   return review;
 };
 
-// ---- Delete Review -------
-exports.deleteReviewService = async ({ reviewId, userId }) => {
 
-  validateObjectId(reviewId, "review ID");
+
+// ================= DELETE REVIEW =================
+exports.deleteReview = async ({ reviewId, userId }) => {
 
   const review = await Review.findById(reviewId);
 
   if (!review) throw new Error("Review not found");
 
   if (review.userId.toString() !== userId) {
-    throw new Error("Not allowed to delete this review");
+    throw new Error("Not allowed");
   }
 
-  const productId = review.productId;
+  const { targetId, targetType } = review;
 
   await review.deleteOne();
 
-  // sync product rating after deletion
-  await exports.updateProductRating(productId);
+  await exports.updateRating(targetId, targetType);
 
   return { message: "Review deleted" };
 };
 
-// --- Get Reviews by Product (with pagination) ────────────────
-exports.getReviewsByProductService = async (productId, query) => {
 
-  validateObjectId(productId, "product ID");
+
+// ================= GET REVIEWS =================
+exports.getReviews = async (targetId, query) => {
 
   const { page = 1, limit = 10 } = query;
 
-  const filter = { productId, status: "ACTIVE" };
+  const filter = {
+    targetId,
+    status: "ACTIVE"
+  };
 
   const total = await Review.countDocuments(filter);
 
   const reviews = await Review.find(filter)
     .sort({ createdAt: -1 })
-    .skip((Number(page) - 1) * Number(limit))
+    .skip((page - 1) * limit)
     .limit(Number(limit));
 
   return {
     reviews,
     total,
-    page: Number(page),
-    totalPages: Math.ceil(total / Number(limit))
+    page,
+    totalPages: Math.ceil(total / limit)
   };
 };
 
-// ─── Update Product Rating (internal helper) ─────────────────
-exports.updateProductRating = async (productId) => {
+
+
+// ================= UPDATE RATING =================
+exports.updateRating = async (targetId, targetType) => {
 
   const stats = await Review.aggregate([
     {
       $match: {
-        productId: new mongoose.Types.ObjectId(productId),
+        targetId: new mongoose.Types.ObjectId(targetId),
         status: "ACTIVE"
       }
     },
     {
       $group: {
-        _id: "$productId",
+        _id: "$targetId",
         avgRating: { $avg: "$rating" },
         reviewCount: { $sum: 1 }
       }
     }
   ]);
 
-  if (stats.length > 0) {
-    await Product.findByIdAndUpdate(productId, {
-      averageRating: parseFloat(stats[0].avgRating.toFixed(2)),
-      reviewCount: stats[0].reviewCount
-    });
-  } else {
-    await Product.findByIdAndUpdate(productId, {
-      averageRating: 0,
-      reviewCount: 0
-    });
+  const update =
+    stats.length > 0
+      ? {
+          averageRating: parseFloat(stats[0].avgRating.toFixed(2)),
+          reviewCount: stats[0].reviewCount
+        }
+      : { averageRating: 0, reviewCount: 0 };
+
+  if (targetType === "PRODUCT") {
+    await Product.findByIdAndUpdate(targetId, update);
   }
-};
 
-// ─── Get Rating Breakdown ────────────────────────────────────
-exports.getRatingBreakdown = async (productId) => {
+  if (targetType === "SERVICE") {
+    await Service.findByIdAndUpdate(targetId, update);
+  }
 
-  validateObjectId(productId, "product ID");
-
-  const stats = await Review.aggregate([
-    {
-      $match: {
-        productId: new mongoose.Types.ObjectId(productId),
-        status: "ACTIVE"
-      }
-    },
-    {
-      $group: {
-        _id: "$rating",
-        count: { $sum: 1 }
-      }
-    }
-  ]);
-
-  let breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  let totalReviews = 0;
-  let totalRating = 0;
-
-  stats.forEach(item => {
-    breakdown[item._id] = item.count;
-    totalReviews += item.count;
-    totalRating += item._id * item.count;
-  });
-
-  const averageRating =
-    totalReviews === 0 ? 0 : (totalRating / totalReviews).toFixed(2);
-
-  return { averageRating, totalReviews, ratingBreakdown: breakdown };
 };
