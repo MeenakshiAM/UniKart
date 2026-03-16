@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Star, Heart, ShoppingCart, ArrowLeft, Truck, Shield, RotateCcw, Flag, X } from "lucide-react";
+import { Star, Heart, ShoppingCart, ArrowLeft, Truck, Shield, RotateCcw, Flag, X, Calendar, Clock, MapPin, Navigation } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
@@ -1129,6 +1129,15 @@ export default function ProductDetail() {
   const [selectedReason, setSelectedReason] = useState("");
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  
+  // Booking state for services
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("");
+  const [locationType, setLocationType] = useState("");
+  const [houseAddress, setHouseAddress] = useState("");
+  const [otherLocationName, setOtherLocationName] = useState("");
+  const [otherLocationCoords, setOtherLocationCoords] = useState("");
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   useEffect(() => {
     const foundProduct = allProducts.find(p => p.id === productId);
@@ -1172,6 +1181,63 @@ export default function ProductDetail() {
       localStorage.setItem('cart', JSON.stringify(cart));
       window.dispatchEvent(new Event('storage'));
     }
+  };
+
+  // Check if service requires booking (in-person services)
+  const requiresBooking = (product) => {
+    if (!product || product.category !== 'services') return false;
+    
+    const bookingServices = ['mehendi', 'saree draping', 'laptop repair'];
+    return bookingServices.some(service => 
+      product.subcategory?.toLowerCase().includes(service) || 
+      product.name?.toLowerCase().includes(service)
+    );
+  };
+
+  const handleBookingSubmit = () => {
+    if (!bookingDate || !bookingTime || !locationType) {
+      alert("Please fill in all required booking details");
+      return;
+    }
+
+    if (locationType === 'house' && !houseAddress) {
+      alert("Please provide your house address");
+      return;
+    }
+
+    if (locationType === 'other' && (!otherLocationName || !otherLocationCoords)) {
+      alert("Please provide location name and coordinates");
+      return;
+    }
+
+    // In a real app, this would send booking to backend
+    const bookingData = {
+      productId: product.id,
+      productName: product.name,
+      seller: product.seller,
+      date: bookingDate,
+      time: bookingTime,
+      locationType,
+      ...(locationType === 'house' && { address: houseAddress }),
+      ...(locationType === 'other' && { 
+        locationName: otherLocationName, 
+        coordinates: otherLocationCoords 
+      }),
+      price: product.price,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log("Booking submitted:", bookingData);
+    alert(`Booking confirmed for ${product.name} on ${bookingDate} at ${bookingTime}!`);
+    
+    // Reset form
+    setBookingDate("");
+    setBookingTime("");
+    setLocationType("");
+    setHouseAddress("");
+    setOtherLocationName("");
+    setOtherLocationCoords("");
+    setShowBookingForm(false);
   };
 
   const handleReportSubmit = () => {
@@ -1339,40 +1405,222 @@ export default function ProductDetail() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-4 mb-8">
-              <button
-                onClick={addToCart}
-                className="flex-1 py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Add to Cart
-              </button>
-              <button
-                onClick={toggleWishlist}
-                className={`px-6 py-4 rounded-lg border-2 transition-all ${
-                  wishlist.includes(product.id)
-                    ? 'border-pink-500 bg-pink-50 text-pink-500'
-                    : 'border-gray-300 hover:border-pink-500'
-                }`}
-              >
-                <Heart className={`w-6 h-6 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
-              </button>
-            </div>
+            {requiresBooking(product) ? (
+              <div className="mb-8">
+                {!showBookingForm ? (
+                  <button
+                    onClick={() => setShowBookingForm(true)}
+                    className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    <Calendar className="w-5 h-5" />
+                    Book a Slot
+                  </button>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl p-6 space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Book Your Service</h3>
+                    
+                    {/* Date Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={bookingDate}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-400"
+                      />
+                    </div>
+
+                    {/* Time Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Time *
+                      </label>
+                      <select
+                        value={bookingTime}
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                      >
+                        <option value="">Choose a time slot</option>
+                        <option value="09:00">9:00 AM</option>
+                        <option value="10:00">10:00 AM</option>
+                        <option value="11:00">11:00 AM</option>
+                        <option value="12:00">12:00 PM</option>
+                        <option value="13:00">1:00 PM</option>
+                        <option value="14:00">2:00 PM</option>
+                        <option value="15:00">3:00 PM</option>
+                        <option value="16:00">4:00 PM</option>
+                        <option value="17:00">5:00 PM</option>
+                        <option value="18:00">6:00 PM</option>
+                        <option value="19:00">7:00 PM</option>
+                        <option value="20:00">8:00 PM</option>
+                      </select>
+                    </div>
+
+                    {/* Location Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Service Location *
+                      </label>
+                      <select
+                        value={locationType}
+                        onChange={(e) => setLocationType(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                      >
+                        <option value="">Select location type</option>
+                        <option value="campus">Campus</option>
+                        <option value="hostel">Hostel</option>
+                        <option value="house">House (provide address)</option>
+                        <option value="other">Other (provide name & location)</option>
+                      </select>
+                    </div>
+
+                    {/* House Address */}
+                    {locationType === 'house' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          House Address *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={houseAddress}
+                            onChange={(e) => setHouseAddress(e.target.value)}
+                            placeholder="Enter your complete address"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-3 text-indigo-600 hover:text-indigo-700"
+                            title="Get current location"
+                          >
+                            <Navigation className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Include building, street, area, city, and pincode
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Other Location */}
+                    {locationType === 'other' && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Location Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={otherLocationName}
+                            onChange={(e) => setOtherLocationName(e.target.value)}
+                            placeholder="e.g., Mall, Park, Restaurant"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Live Location Coordinates *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={otherLocationCoords}
+                              onChange={(e) => setOtherLocationCoords(e.target.value)}
+                              placeholder="e.g., 28.6139,77.2090"
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-3 text-indigo-600 hover:text-indigo-700"
+                              title="Get current location"
+                            >
+                              <Navigation className="w-5 h-5" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Format: latitude,longitude (e.g., 28.6139,77.2090)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Booking Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        onClick={handleBookingSubmit}
+                        className="flex-1 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Calendar className="w-5 h-5" />
+                        Confirm Booking
+                      </button>
+                      <button
+                        onClick={() => setShowBookingForm(false)}
+                        className="px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-4 mb-8">
+                <button
+                  onClick={addToCart}
+                  className="flex-1 py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  Add to Cart
+                </button>
+                <button
+                  onClick={toggleWishlist}
+                  className={`px-6 py-4 rounded-lg border-2 transition-all ${
+                    wishlist.includes(product.id)
+                      ? 'border-pink-500 bg-pink-50 text-pink-500'
+                      : 'border-gray-300 hover:border-pink-500'
+                  }`}
+                >
+                  <Heart className={`w-6 h-6 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
+                </button>
+              </div>
+            )}
 
             {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <Truck className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
-                <p className="text-xs text-gray-600">Campus Delivery</p>
-              </div>
-              <div className="text-center">
-                <Shield className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
-                <p className="text-xs text-gray-600">Secure Payment</p>
-              </div>
-              <div className="text-center">
-                <RotateCcw className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
-                <p className="text-xs text-gray-600">Easy Returns</p>
-              </div>
+              {requiresBooking(product) ? (
+                <>
+                  <div className="text-center">
+                    <MapPin className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">Home Service</p>
+                  </div>
+                  <div className="text-center">
+                    <Shield className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">Verified Professional</p>
+                  </div>
+                  <div className="text-center">
+                    <Clock className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">Flexible Timing</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-center">
+                    <Truck className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">Campus Delivery</p>
+                  </div>
+                  <div className="text-center">
+                    <Shield className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">Secure Payment</p>
+                  </div>
+                  <div className="text-center">
+                    <RotateCcw className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-600">Easy Returns</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
