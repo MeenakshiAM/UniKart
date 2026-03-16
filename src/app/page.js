@@ -49,55 +49,7 @@ export default function Home() {
       <Navbar />
       <Hero />
 
-      {/* Featured Products */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Featured Products</h2>
-            <p className="text-gray-600">Handpicked favorites from our student entrepreneurs</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map(product => (
-              <div key={product.id} className="product-card group">
-                <Link href="/shop">
-                  <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center text-6xl mb-4 group-hover:scale-105 transition-transform cursor-pointer">
-                    {product.image}
-                  </div>
-                </Link>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mb-2">by {product.seller}</p>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xl font-bold text-indigo-600">₹{product.price}</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">{product.rating}</span>
-                    </div>
-                  </div>
-                  
-                  {/* Add to Cart Button */}
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="w-full py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <Link href="/shop">
-              <button className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg">
-                View All Products
-              </button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      
 
       {/* Stats */}
       <section className="py-16 bg-gradient-to-br from-indigo-600 to-purple-600 text-white">
