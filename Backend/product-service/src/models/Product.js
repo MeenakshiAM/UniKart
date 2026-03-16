@@ -67,8 +67,14 @@ const productSchema = new mongoose.Schema(
       }
     },
 
+    // ✅ Updated images schema to store objects with url and public_id
     images: {
-      type: [String],
+      type: [
+        {
+          url: { type: String, required: true },
+          public_id: { type: String, required: true }
+        }
+      ],
       validate: [
         {
           validator: function (arr) {
@@ -88,7 +94,7 @@ const productSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["DRAFT", "ACTIVE", "REJECTED", "HIDDEN", "OUT_OF_STOCK","PENDING_APPROVAL"],
+      enum: ["DRAFT", "ACTIVE", "REJECTED", "HIDDEN", "OUT_OF_STOCK", "PENDING_APPROVAL"],
       required: true,
       index: true
     },
