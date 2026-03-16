@@ -2,22 +2,22 @@ const mongoose = require("mongoose");
 
 const timeSlotSchema = new mongoose.Schema({
   startTime: {
-    type: String, // Example: "09:00"
+    type: String,
     required: true
   },
 
   endTime: {
-    type: String, // Example: "10:00"
+    type: String,
     required: true
   },
 
   status: {
     type: String,
     enum: ["available", "booked", "blocked"],
-    default: "available"
+    default: "available",
+    index: true
   },
 
-  // Multiple bookings can exist if capacity > 1
   bookingIds: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -28,8 +28,9 @@ const timeSlotSchema = new mongoose.Schema({
   capacity: {
     max: {
       type: Number,
-      default: 1 // provider decides this
+      default: 1
     },
+
     booked: {
       type: Number,
       default: 0
@@ -41,7 +42,6 @@ const timeSlotSchema = new mongoose.Schema({
 
 const slotSchema = new mongoose.Schema({
 
-  // Service reference
   serviceId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Service",
@@ -49,7 +49,6 @@ const slotSchema = new mongoose.Schema({
     index: true
   },
 
-  // Provider reference
   providerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -57,23 +56,21 @@ const slotSchema = new mongoose.Schema({
     index: true
   },
 
-  // Date of slots
   date: {
     type: Date,
     required: true,
     index: true
   },
 
-  // Provider defines number of slots
   timeSlots: [timeSlotSchema],
 
-  // Recurring slots (optional feature)
   isRecurring: {
     type: Boolean,
     default: false
   },
 
   recurringPattern: {
+
     frequency: {
       type: String,
       enum: ["daily", "weekly", "monthly", "none"],
@@ -82,10 +79,9 @@ const slotSchema = new mongoose.Schema({
 
     endDate: Date,
 
-    daysOfWeek: [Number] // 0=Sunday
+    daysOfWeek: [Number]
   },
 
-  // Slot activation control
   isActive: {
     type: Boolean,
     default: true
@@ -96,76 +92,101 @@ const slotSchema = new mongoose.Schema({
 });
 
 
-// Indexes for faster queries
+// ================= INDEXES =================
+
 slotSchema.index({ serviceId: 1, date: 1 });
 slotSchema.index({ providerId: 1, date: 1 });
 slotSchema.index({ date: 1, "timeSlots.status": 1 });
 
 
-// Book slot method
-slotSchema.methods.bookSlot = function (timeSlotId, bookingId) {
+// ================= SAFE SLOT BOOKING =================
 
-  const slot = this.timeSlots.id(timeSlotId);
+slotSchema.statics.bookTimeSlot = async function (slotId, timeSlotId, bookingId) {
 
-  if (!slot) {
-    throw new Error("Time slot not found");
-  }
-
-  if (slot.capacity.booked >= slot.capacity.max) {
-    throw new Error("Slot fully booked");
-  }
-
-  slot.capacity.booked += 1;
-  slot.bookingIds.push(bookingId);
-
-  if (slot.capacity.booked >= slot.capacity.max) {
-    slot.status = "booked";
-  }
-
-  return this.save();
-};
-
-
-// Release slot (for cancellations)
-slotSchema.methods.releaseSlot = function (timeSlotId, bookingId) {
-
-  const slot = this.timeSlots.id(timeSlotId);
-
-  if (!slot) {
-    throw new Error("Time slot not found");
-  }
-
-  if (slot.capacity.booked > 0) {
-    slot.capacity.booked -= 1;
-  }
-
-  slot.bookingIds = slot.bookingIds.filter(
-    id => id.toString() !== bookingId.toString()
+  const slot = await this.findOneAndUpdate(
+    {
+      _id: slotId,
+      "timeSlots._id": timeSlotId,
+      "timeSlots.status": "available",
+      $expr: {
+        $lt: [
+          "$timeSlots.$.capacity.booked",
+          "$timeSlots.$.capacity.max"
+        ]
+      }
+    },
+    {
+      $inc: { "timeSlots.$.capacity.booked": 1 },
+      $addToSet: { "timeSlots.$.bookingIds": bookingId }
+    },
+    { new: true }
   );
 
-  if (slot.capacity.booked < slot.capacity.max) {
-    slot.status = "available";
+  if (!slot) {
+    throw new Error("Slot already booked or unavailable");
   }
 
-  return this.save();
+  const timeSlot = slot.timeSlots.id(timeSlotId);
+
+  if (timeSlot.capacity.booked >= timeSlot.capacity.max) {
+    timeSlot.status = "booked";
+    await slot.save();
+  }
+
+  return slot;
 };
 
 
-// Get available slots
+// ================= RELEASE SLOT =================
+
+slotSchema.statics.releaseTimeSlot = async function (slotId, timeSlotId, bookingId) {
+
+  const slot = await this.findOneAndUpdate(
+    {
+      _id: slotId,
+      "timeSlots._id": timeSlotId
+    },
+    {
+      $inc: { "timeSlots.$.capacity.booked": -1 },
+      $pull: { "timeSlots.$.bookingIds": bookingId },
+      $set: { "timeSlots.$.status": "available" }
+    },
+    { new: true }
+  );
+
+  if (!slot) {
+    throw new Error("Slot not found");
+  }
+
+  return slot;
+};
+
+
+// ================= GET AVAILABLE SLOTS =================
+
 slotSchema.methods.getAvailableSlots = function () {
+
   return this.timeSlots.filter(
-    slot => slot.capacity.booked < slot.capacity.max
+    slot => slot.capacity.booked < slot.capacity.max &&
+            slot.status === "available"
   );
+
 };
 
 
-// Static method to find available slots
-slotSchema.statics.findAvailableSlots = function (serviceId, startDate, endDate) {
+// ================= FIND AVAILABLE SLOTS =================
+
+slotSchema.statics.findAvailableSlots = function (
+  serviceId,
+  startDate,
+  endDate
+) {
 
   return this.find({
     serviceId,
     date: { $gte: startDate, $lte: endDate },
-    isActive: true
+    isActive: true,
+    "timeSlots.status": "available"
   }).sort({ date: 1 });
 
 };

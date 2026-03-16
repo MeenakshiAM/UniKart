@@ -1,21 +1,21 @@
 const express = require("express");
 const cors = require("cors");
 
-const listingRoutes = require("./routes/service.routes");
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/listings", listingRoutes);
+// ================= ROUTES =================
+
 const productRoutes = require("./routes/product.routes");
+const reviewRoutes = require("./routes/review.routes");
+const bookingRoutes = require("./routes/booking.routes");
+const serviceRoutes = require("./routes/service.routes");
 
 app.use("/api/products", productRoutes);
-// routes
-
-const reviewRoutes = require("./routes/review.routes");
-app.use("/api", reviewRoutes);
-
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/services", serviceRoutes);
 
 module.exports = app;

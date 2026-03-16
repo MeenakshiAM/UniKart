@@ -14,48 +14,37 @@ class BookingService {
 
     try {
 
-      const { serviceId, slotId, timeSlotId, userId, participants = 1 } = bookingData;
+      const { serviceId, slotId, timeSlotId, participants = 1 } = bookingData;
 
-      // 1. Fetch service
       const service = await Service.findById(serviceId).session(session);
 
       if (!service || service.status !== 'active') {
         throw new Error('Service not available');
       }
 
-      // 2. Fetch slot
       const slot = await Slot.findById(slotId).session(session);
 
       if (!slot) {
         throw new Error('Slot not found');
       }
 
-      // 3. Find timeslot
       const timeSlot = slot.timeSlots.id(timeSlotId);
 
       if (!timeSlot) {
         throw new Error('Time slot not found');
       }
 
-      // 4. Capacity check
-      const remainingCapacity = timeSlot.capacity.max - timeSlot.capacity.booked;
-
-      if (remainingCapacity <= 0) {
-        throw new Error('Slot fully booked');
+      if (timeSlot.capacity.booked + participants > timeSlot.capacity.max) {
+        throw new Error('Not enough capacity in this slot');
       }
 
-      if (participants > remainingCapacity) {
-        throw new Error(`Only ${remainingCapacity} spots remaining`);
-      }
-
-      // 5. Pricing
       const basePrice = service.pricing.basePrice;
+
       const serviceFee = this.calculateServiceFee(basePrice);
       const taxes = this.calculateTaxes(basePrice);
 
       const totalAmount = (basePrice + serviceFee + taxes) * participants;
 
-      // 6. Create booking
       const booking = new Booking({
         ...bookingData,
 
@@ -76,39 +65,26 @@ class BookingService {
           totalAmount
         },
 
-        status: service.bookingSettings.autoAcceptBooking ? 'confirmed' : 'pending',
-        autoAccepted: service.bookingSettings.autoAcceptBooking
+        paymentStatus: "pending",
+        status: "pending_payment"
       });
 
       await booking.save({ session });
 
-      // 7. Update slot capacity
-      await slot.bookSlot(timeSlotId, booking._id, participants, session);
+      await Slot.bookTimeSlot(
+        slotId,
+        timeSlotId,
+        booking._id,
+        participants,
+        session
+      );
 
-      // 8. Update service stats
       await service.incrementBooking(session);
-
-      // 9. Auto confirmation
-      if (service.bookingSettings.autoAcceptBooking) {
-
-        booking.confirmedAt = new Date();
-        booking.confirmedBy = 'system';
-
-        booking.postBookingDetailsRevealed = true;
-
-        booking.revealedDetails = {
-          ...service.postBookingDetails,
-          revealedAt: new Date()
-        };
-
-        await booking.save({ session });
-
-      }
 
       await session.commitTransaction();
       session.endSession();
 
-      await this.sendBookingNotifications(booking, service);
+      await this.sendBookingNotifications(booking);
 
       return booking;
 
@@ -121,7 +97,49 @@ class BookingService {
     }
   }
 
-  // ================= CONFIRM BOOKING =================
+  // ================= PAYMENT SUCCESS (CALLED BY PAYMENT SERVICE) =================
+
+  async markBookingPaid(bookingId, paymentData) {
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    booking.paymentStatus = "paid";
+
+    booking.payment = {
+      transactionId: paymentData.transactionId,
+      method: paymentData.method,
+      paidAt: new Date()
+    };
+
+    booking.status = "confirmed";
+    booking.confirmedAt = new Date();
+    booking.confirmedBy = "payment_system";
+
+    const service = await Service.findById(booking.serviceId);
+
+    if (service?.postBookingDetails) {
+
+      booking.postBookingDetailsRevealed = true;
+
+      booking.revealedDetails = {
+        ...service.postBookingDetails,
+        revealedAt: new Date()
+      };
+
+    }
+
+    await booking.save();
+
+    await this.sendConfirmationNotification(booking);
+
+    return booking;
+  }
+
+  // ================= CONFIRM BOOKING (MANUAL PROVIDER CONFIRMATION) =================
 
   async confirmBooking(bookingId, providerId) {
 
@@ -131,7 +149,7 @@ class BookingService {
     });
 
     if (!booking) {
-      throw new Error('Booking not found or unauthorized');
+      throw new Error('Booking not found');
     }
 
     if (booking.status !== 'pending') {
@@ -177,13 +195,9 @@ class BookingService {
         throw new Error('Booking not found');
       }
 
-      if (!['pending', 'confirmed', 'payment_completed'].includes(booking.status)) {
+      if (!['pending_payment','confirmed'].includes(booking.status)) {
         throw new Error('Booking cannot be cancelled');
       }
-
-      const service = await Service.findById(booking.serviceId).session(session);
-
-      const refundAmount = this.calculateRefund(booking, service);
 
       const isUser = cancelledBy.startsWith('user');
 
@@ -194,31 +208,20 @@ class BookingService {
       booking.cancellation = {
         cancelledAt: new Date(),
         cancelledBy,
-        reason,
-        refundEligible: refundAmount > 0,
-        refundAmount
+        reason
       };
 
       await booking.save({ session });
 
-      // release slot
-      const slot = await Slot.findById(booking.slotId).session(session);
-
-      if (slot) {
-        await slot.releaseSlot(booking.timeSlotId, booking.participants, session);
-      }
-
-      // decrement service bookings
-      if (service) {
-        await service.decrementBooking(session);
-      }
+      await Slot.releaseTimeSlot(
+        booking.slotId,
+        booking.timeSlotId,
+        booking._id,
+        session
+      );
 
       await session.commitTransaction();
       session.endSession();
-
-      if (refundAmount > 0) {
-        await this.processRefund(booking, refundAmount);
-      }
 
       await this.sendCancellationNotification(booking);
 
@@ -258,43 +261,6 @@ class BookingService {
     return booking;
   }
 
-  // ================= PAYMENT =================
-
-  async processPayment(bookingId, paymentDetails) {
-
-    const booking = await Booking.findById(bookingId);
-
-    if (!booking) {
-      throw new Error('Booking not found');
-    }
-
-    booking.payment = {
-      status: 'completed',
-      method: paymentDetails.method,
-      transactionId: paymentDetails.transactionId,
-      paidAt: new Date()
-    };
-
-    booking.status = 'payment_completed';
-
-    await booking.save();
-
-    return booking;
-  }
-
-  async processRefund(booking, refundAmount) {
-
-    booking.payment.status = 'refunded';
-    booking.payment.refundedAt = new Date();
-    booking.payment.refundAmount = refundAmount;
-
-    booking.status = 'refunded';
-
-    await booking.save();
-
-    return { success: true };
-  }
-
   // ================= PRICING =================
 
   calculateServiceFee(price) {
@@ -305,41 +271,18 @@ class BookingService {
     return Math.round(price * 0.18);
   }
 
-  calculateRefund(booking, service) {
-
-    if (booking.payment.status !== 'completed') {
-      return 0;
-    }
-
-    const bookingDate = new Date(booking.bookingDate);
-    const now = new Date();
-
-    const hours = (bookingDate - now) / (1000 * 60 * 60);
-
-    const policy = service?.bookingSettings?.cancellationPolicy || 'moderate';
-
-    if (policy === 'flexible' && hours > 24) {
-      return booking.pricing.totalAmount;
-    }
-
-    if (policy === 'moderate' && hours > 12) {
-      return Math.round(booking.pricing.totalAmount * 0.5);
-    }
-
-    return 0;
-  }
-
   // ================= NOTIFICATIONS =================
 
   async sendBookingNotifications(booking) {
 
     console.log('Booking notification', booking._id);
 
+    if (!booking.notifications) booking.notifications = [];
+
     booking.notifications.push({
-      type: 'email',
+      type: 'system',
       sentAt: new Date(),
-      status: 'sent',
-      message: 'Booking confirmation'
+      message: 'Booking created'
     });
 
     await booking.save();
@@ -349,10 +292,11 @@ class BookingService {
 
     console.log('Confirmation sent', booking._id);
 
+    if (!booking.notifications) booking.notifications = [];
+
     booking.notifications.push({
-      type: 'email',
+      type: 'system',
       sentAt: new Date(),
-      status: 'sent',
       message: 'Booking confirmed'
     });
 
@@ -363,10 +307,11 @@ class BookingService {
 
     console.log('Cancellation sent', booking._id);
 
+    if (!booking.notifications) booking.notifications = [];
+
     booking.notifications.push({
-      type: 'email',
+      type: 'system',
       sentAt: new Date(),
-      status: 'sent',
       message: 'Booking cancelled'
     });
 

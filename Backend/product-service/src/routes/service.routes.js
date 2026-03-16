@@ -1,145 +1,146 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const serviceController = require('../controllers/service.controller');
+const serviceController = require("../controllers/service.controller");
 
-const authMiddleware = require('../middlewares/auth.middleware');
-const roleMiddleware = require('../middlewares/role.middleware');
-const uploadMiddleware = require('../middlewares/upload.middleware');
+const authMiddleware = require("../middlewares/auth.middleware");
+const roleMiddleware = require("../middlewares/role.middleware");
+const uploadMiddleware = require("../middlewares/upload.middleware");
 
 
-// ==================== PUBLIC ROUTES ====================
+// ── PUBLIC ROUTES ─────────────────────────────────────────
 
 // List services
-router.get('/', serviceController.listServices);
+router.get("/", serviceController.listServices);
 
 // Search nearby services
-router.get('/search/nearby', serviceController.searchNearbyServices);
+router.get("/search/nearby", serviceController.searchNearbyServices);
 
 // Get service slots
-router.get('/:serviceId/slots', serviceController.getServiceSlots);
+router.get("/:serviceId/slots", serviceController.getServiceSlots);
 
 // Get single service
-router.get('/:serviceId', serviceController.getService);
+router.get("/:serviceId", serviceController.getService);
 
 
 
-// ==================== PROVIDER ROUTES ====================
+// ── PROVIDER ROUTES ───────────────────────────────────────
 
 // Create service
 router.post(
-  '/',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  uploadMiddleware.array('images', 5),
+  "/",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  uploadMiddleware.array("images", 5),
   serviceController.createService
 );
 
 // Update service
 router.put(
-  '/:serviceId',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  uploadMiddleware.array('images', 5),
+  "/:serviceId",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  uploadMiddleware.array("images", 5),
   serviceController.updateService
 );
 
 // Delete service
 router.delete(
-  '/:serviceId',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/:serviceId",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.deleteService
 );
 
 
-// ==================== PROVIDER DASHBOARD ====================
+
+// ── PROVIDER DASHBOARD ───────────────────────────────────
 
 // My services
 router.get(
-  '/provider/my-services',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/provider/my-services",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.getMyServices
 );
 
 // Provider stats
 router.get(
-  '/provider/stats',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/provider/stats",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.getProviderStats
 );
 
 
 
-// ==================== SLOT MANAGEMENT ====================
+// ── SLOT MANAGEMENT ──────────────────────────────────────
 
 // Create slot
 router.post(
-  '/:serviceId/slots',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/:serviceId/slots",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.createSlot
 );
 
 // Bulk create slots
 router.post(
-  '/:serviceId/slots/bulk',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/:serviceId/slots/bulk",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.bulkCreateSlots
 );
 
 // Update slot
 router.put(
-  '/slots/:slotId',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/slots/:slotId",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.updateSlot
 );
 
 // Delete slot
 router.delete(
-  '/slots/:slotId',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
+  "/slots/:slotId",
+  authMiddleware,
+  roleMiddleware("SELLER"),
   serviceController.deleteSlot
 );
 
 
 
-// ==================== ADMIN MODERATION ====================
+// ── ADMIN ROUTES ─────────────────────────────────────────
 
 // Pending services
 router.get(
-  '/admin/pending',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['admin']),
+  "/admin/pending",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
   serviceController.getPendingServices
 );
 
-// Approve
+// Approve service
 router.post(
-  '/admin/:serviceId/approve',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['admin']),
+  "/admin/:serviceId/approve",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
   serviceController.approveService
 );
 
-// Reject
+// Reject service
 router.post(
-  '/admin/:serviceId/reject',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['admin']),
+  "/admin/:serviceId/reject",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
   serviceController.rejectService
 );
 
-// Suspend
+// Suspend service
 router.post(
-  '/admin/:serviceId/suspend',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['admin']),
+  "/admin/:serviceId/suspend",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
   serviceController.suspendService
 );
 

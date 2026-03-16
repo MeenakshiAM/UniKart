@@ -5,64 +5,81 @@ const authMiddleware = require("../middlewares/auth.middleware");
 const roleMiddleware = require("../middlewares/role.middleware");
 
 const {
-  createProduct,
-  getMyProducts,
-  getAllActiveProducts,
-  getProductsBySellerId,
-  getProductById,
-  updateProduct,
-  deleteProduct,
-  hideProduct,
-  unhideProduct,
-  getMyDrafts,
-  getDraftById,
-  getMyRejectedProducts,
-  getMyHiddenProducts,
-  getMyOutOfStock,        // ← new
-  resubmitProduct,
-  reduceStock,
-  restoreStock,
-  adminHideProduct       // ← new
-} = require("../controllers/product.controller");
+  createBooking,
+  getMyBookings,
+  getBookingDetails,
+  cancelBooking,
+  getProviderBookings,
+  getTodaySchedule,
+  confirmBooking,
+  completeBooking,
+  getProviderBookingStats
+} = require("../controllers/booking.controller");
 
-const upload = require("../middlewares/upload.middleware");
 
+// ── Create booking (Buyer/User) ─────────────────────────────
 router.post(
-  "/create",
+  "/",
   authMiddleware,
-  roleMiddleware("SELLER"),
-  upload.array("images", 5),
-  createProduct
+  createBooking
 );
 
-// ── Public ───────────────────────────────────────────────────
-router.get("/", getAllActiveProducts);
-router.get("/seller/:sellerId", getProductsBySellerId);
 
-// ── Seller dashboard routes ──────────────────────────────────
-router.get("/my", authMiddleware, roleMiddleware("SELLER"), getMyProducts);
-router.get("/my/drafts", authMiddleware, roleMiddleware("SELLER"), getMyDrafts);
-router.get("/my/drafts/:id", authMiddleware, roleMiddleware("SELLER"), getDraftById);
-router.get("/my/rejected", authMiddleware, roleMiddleware("SELLER"), getMyRejectedProducts);
-router.get("/my/hidden", authMiddleware, roleMiddleware("SELLER"), getMyHiddenProducts);
-router.get("/my/out-of-stock", authMiddleware, roleMiddleware("SELLER"), getMyOutOfStock); // ← new
+// ── User booking routes ─────────────────────────────────────
+router.get(
+  "/my-bookings",
+  authMiddleware,
+  getMyBookings
+);
 
-// ── Public single product ────────────────────────────────────
-router.get("/:id", getProductById);
+router.get(
+  "/:bookingId",
+  authMiddleware,
+  getBookingDetails
+);
 
-// ── Seller actions ───────────────────────────────────────────
-//router.post("/", authMiddleware, roleMiddleware("SELLER"), createProduct);
-router.patch("/:id", authMiddleware, roleMiddleware("SELLER"),upload.array("images", 5), updateProduct);
-router.patch("/:id/hide", authMiddleware, roleMiddleware("SELLER"), hideProduct);
-router.patch("/:id/unhide", authMiddleware, roleMiddleware("SELLER"), unhideProduct);
-router.patch("/:id/resubmit", authMiddleware, roleMiddleware("SELLER"),upload.array("images", 5), resubmitProduct);
-router.delete("/:id", authMiddleware, roleMiddleware("SELLER"), deleteProduct);
+router.post(
+  "/:bookingId/cancel",
+  authMiddleware,
+  cancelBooking
+);
 
-// ── Internal - called by order service ───────────────────────
-router.patch("/:id/reduce-stock", authMiddleware, reduceStock);
-router.patch("/:id/restore-stock", authMiddleware, restoreStock);
 
-// ── Internal - called by report automation service ───────────
-router.patch("/:id/admin-hide", adminHideProduct); // ← new, no role check — internal only
+// ── Provider / Seller routes ────────────────────────────────
+router.get(
+  "/provider/bookings",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  getProviderBookings
+);
+
+router.get(
+  "/provider/today",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  getTodaySchedule
+);
+
+router.post(
+  "/:bookingId/confirm",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  confirmBooking
+);
+
+router.post(
+  "/:bookingId/complete",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  completeBooking
+);
+
+router.get(
+  "/provider/stats",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  getProviderBookingStats
+);
+
 
 module.exports = router;
