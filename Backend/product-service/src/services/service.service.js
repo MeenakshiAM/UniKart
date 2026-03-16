@@ -1,7 +1,7 @@
 const Service = require('../models/Service');
 const Slot = require('../models/Slot');
 const { cloudinary } = require('../config/cloudinary');
-const moderationService = require('./moderation.service');
+const moderationService = require('../moderation.service');
 
 class ServiceService {
 

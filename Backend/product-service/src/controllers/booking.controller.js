@@ -1,338 +1,289 @@
-const bookingService = require('../services/booking.service');
+const bookingService = require("../services/booking.service");
 
-class BookingController {
+// ==================== CREATE BOOKING ====================
+exports.createBooking = async (req, res) => {
+  try {
 
-  // ==================== CREATE BOOKING ====================
+    const bookingData = {
+      ...req.body,
+      userId: req.user.id,
+      userName: req.user.name,
+      userEmail: req.user.email,
+      userPhone: req.user.phone || req.body.userPhone
+    };
 
-  async createBooking(req, res) {
-    try {
+    const booking = await bookingService.createBooking(bookingData);
 
-      const bookingData = {
-        ...req.body,
-        userId: req.user.id,
-        userName: req.user.name,
-        userEmail: req.user.email,
-        userPhone: req.user.phone || req.body.userPhone
-      };
+    return res.status(201).json({
+      success: true,
+      message: booking.autoAccepted
+        ? "Booking confirmed automatically"
+        : "Booking created. Awaiting provider confirmation.",
+      data: booking
+    });
 
-      const booking = await bookingService.createBooking(bookingData);
+  } catch (error) {
 
-      return res.status(201).json({
-        success: true,
-        message: booking.autoAccepted
-          ? 'Booking confirmed automatically'
-          : 'Booking created. Awaiting provider confirmation.',
-        data: booking
-      });
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
 
-    } catch (error) {
+  }
+};
 
+
+
+// ==================== CONFIRM BOOKING ====================
+exports.confirmBooking = async (req, res) => {
+  try {
+
+    const { bookingId } = req.params;
+    const providerId = req.user.id;
+
+    const booking = await bookingService.confirmBooking(
+      bookingId,
+      providerId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking confirmed successfully",
+      data: booking
+    });
+
+  } catch (error) {
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
+
+
+
+// ==================== CANCEL BOOKING ====================
+exports.cancelBooking = async (req, res) => {
+  try {
+
+    const { bookingId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
       return res.status(400).json({
         success: false,
-        message: error.message
+        message: "Cancellation reason is required"
       });
-
     }
+
+    const cancelledBy =
+      req.user.role === "SELLER"
+        ? req.user.id
+        : `user_${req.user.id}`;
+
+    const booking = await bookingService.cancelBooking(
+      bookingId,
+      cancelledBy,
+      reason
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking cancelled successfully",
+      data: booking
+    });
+
+  } catch (error) {
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
+};
 
 
-  // ==================== CONFIRM BOOKING ====================
 
-  async confirmBooking(req, res) {
-    try {
+// ==================== COMPLETE BOOKING ====================
+exports.completeBooking = async (req, res) => {
+  try {
 
-      const { bookingId } = req.params;
-      const providerId = req.user.id;
+    const { bookingId } = req.params;
+    const providerId = req.user.id;
 
-      const booking = await bookingService.confirmBooking(bookingId, providerId);
+    const booking = await bookingService.completeBooking(
+      bookingId,
+      providerId
+    );
 
-      return res.status(200).json({
-        success: true,
-        message: 'Booking confirmed successfully',
-        data: booking
-      });
+    return res.status(200).json({
+      success: true,
+      message: "Booking marked as completed",
+      data: booking
+    });
 
-    } catch (error) {
+  } catch (error) {
 
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
 
-    }
   }
+};
 
 
-  // ==================== CANCEL BOOKING ====================
 
-  async cancelBooking(req, res) {
-    try {
+// ==================== USER BOOKINGS ====================
+exports.getMyBookings = async (req, res) => {
+  try {
 
-      const { bookingId } = req.params;
-      const { reason } = req.body;
+    const userId = req.user.id;
 
-      if (!reason) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cancellation reason is required'
-        });
-      }
+    const filters = {
+      status: req.query.status,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 20
+    };
 
-      let cancelledBy;
+    const result = await bookingService.getUserBookings(userId, filters);
 
-      if (req.user.role === 'provider') {
-        cancelledBy = req.user.id;
-      } else {
-        cancelledBy = `user_${req.user.id}`;
-      }
+    return res.status(200).json({
+      success: true,
+      data: result.bookings,
+      pagination: result.pagination
+    });
 
-      const booking = await bookingService.cancelBooking(
-        bookingId,
-        cancelledBy,
-        reason
-      );
+  } catch (error) {
 
-      return res.status(200).json({
-        success: true,
-        message: 'Booking cancelled successfully',
-        data: booking
-      });
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
 
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
-    }
   }
+};
 
 
-  // ==================== COMPLETE BOOKING ====================
 
-  async completeBooking(req, res) {
-    try {
+// ==================== PROVIDER BOOKINGS ====================
+exports.getProviderBookings = async (req, res) => {
+  try {
 
-      const { bookingId } = req.params;
-      const providerId = req.user.id;
+    const providerId = req.user.id;
 
-      const booking = await bookingService.completeBooking(
-        bookingId,
-        providerId
-      );
+    const filters = {
+      status: req.query.status,
+      date: req.query.date,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 20
+    };
 
-      return res.status(200).json({
-        success: true,
-        message: 'Booking marked as completed',
-        data: booking
-      });
+    const result = await bookingService.getProviderBookings(
+      providerId,
+      filters
+    );
 
-    } catch (error) {
+    return res.status(200).json({
+      success: true,
+      data: result.bookings,
+      pagination: result.pagination
+    });
 
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
+  } catch (error) {
 
-    }
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
+};
 
 
-  // ==================== PAYMENT ====================
 
-  async processPayment(req, res) {
-    try {
+// ==================== PROVIDER TODAY SCHEDULE ====================
+exports.getTodaySchedule = async (req, res) => {
+  try {
 
-      const { bookingId } = req.params;
+    const providerId = req.user.id;
 
-      const paymentDetails = {
-        transactionId: req.body.transactionId,
-        method: req.body.method,
-        amount: req.body.amount
-      };
+    const bookings = await bookingService.getTodaySchedule(providerId);
 
-      if (!paymentDetails.transactionId || !paymentDetails.method) {
-        return res.status(400).json({
-          success: false,
-          message: 'Transaction ID and payment method are required'
-        });
-      }
+    return res.status(200).json({
+      success: true,
+      data: bookings
+    });
 
-      const booking = await bookingService.processPayment(
-        bookingId,
-        paymentDetails
-      );
+  } catch (error) {
 
-      return res.status(200).json({
-        success: true,
-        message: 'Payment processed successfully',
-        data: booking
-      });
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
 
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
-    }
   }
+};
 
 
-  // ==================== USER BOOKINGS ====================
 
-  async getMyBookings(req, res) {
-    try {
+// ==================== BOOKING DETAILS ====================
+exports.getBookingDetails = async (req, res) => {
+  try {
 
-      const userId = req.user.id;
+    const { bookingId } = req.params;
 
-      const filters = {
-        status: req.query.status,
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 20
-      };
+    const userId =
+      req.user.role === "BUYER" ? req.user.id : null;
 
-      const result = await bookingService.getUserBookings(userId, filters);
+    const providerId =
+      req.user.role === "SELLER" ? req.user.id : null;
 
-      return res.status(200).json({
-        success: true,
-        data: result.bookings,
-        pagination: result.pagination
-      });
+    const booking = await bookingService.getBookingById(
+      bookingId,
+      userId,
+      providerId
+    );
 
-    } catch (error) {
+    return res.status(200).json({
+      success: true,
+      data: booking
+    });
 
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
+  } catch (error) {
 
-    }
+    return res.status(404).json({
+      success: false,
+      message: error.message
+    });
+
   }
+};
 
 
-  // ==================== PROVIDER BOOKINGS ====================
 
-  async getProviderBookings(req, res) {
-    try {
+// ==================== PROVIDER BOOKING STATS ====================
+exports.getProviderBookingStats = async (req, res) => {
+  try {
 
-      const providerId = req.user.id;
+    const providerId = req.user.id;
 
-      const filters = {
-        status: req.query.status,
-        date: req.query.date,
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 20
-      };
+    const stats = await bookingService.getProviderBookingStats(providerId);
 
-      const result = await bookingService.getProviderBookings(
-        providerId,
-        filters
-      );
+    return res.status(200).json({
+      success: true,
+      data: stats
+    });
 
-      return res.status(200).json({
-        success: true,
-        data: result.bookings,
-        pagination: result.pagination
-      });
+  } catch (error) {
 
-    } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
 
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
-    }
   }
-
-
-  // ==================== PROVIDER TODAY SCHEDULE ====================
-
-  async getTodaySchedule(req, res) {
-    try {
-
-      const providerId = req.user.id;
-
-      const bookings = await bookingService.getTodaySchedule(providerId);
-
-      return res.status(200).json({
-        success: true,
-        data: bookings
-      });
-
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
-    }
-  }
-
-
-  // ==================== BOOKING DETAILS ====================
-
-  async getBookingDetails(req, res) {
-    try {
-
-      const { bookingId } = req.params;
-
-      const userId =
-        req.user.role === 'user' ? req.user.id : null;
-
-      const providerId =
-        req.user.role === 'provider' ? req.user.id : null;
-
-      const booking = await bookingService.getBookingById(
-        bookingId,
-        userId,
-        providerId
-      );
-
-      return res.status(200).json({
-        success: true,
-        data: booking
-      });
-
-    } catch (error) {
-
-      return res.status(404).json({
-        success: false,
-        message: error.message
-      });
-
-    }
-  }
-
-
-  // ==================== PROVIDER BOOKING STATS ====================
-
-  async getProviderBookingStats(req, res) {
-    try {
-
-      const providerId = req.user.id;
-
-      const stats = await bookingService.getProviderBookingStats(providerId);
-
-      return res.status(200).json({
-        success: true,
-        data: stats
-      });
-
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
-    }
-  }
-
-}
-
-module.exports = new BookingController();
+};

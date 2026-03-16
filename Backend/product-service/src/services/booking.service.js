@@ -65,8 +65,8 @@ class BookingService {
           totalAmount
         },
 
-        status: service.bookingSettings.autoAcceptBooking ? 'confirmed' : 'pending',
-        autoAccepted: service.bookingSettings.autoAcceptBooking
+        paymentStatus: "pending",
+        status: "pending_payment"
       });
 
       await booking.save({ session });
@@ -80,22 +80,6 @@ class BookingService {
       );
 
       await service.incrementBooking(session);
-
-      if (service.bookingSettings.autoAcceptBooking) {
-
-        booking.confirmedAt = new Date();
-        booking.confirmedBy = 'system';
-
-        booking.postBookingDetailsRevealed = true;
-
-        booking.revealedDetails = {
-          ...service.postBookingDetails,
-          revealedAt: new Date()
-        };
-
-        await booking.save({ session });
-
-      }
 
       await session.commitTransaction();
       session.endSession();
@@ -113,7 +97,49 @@ class BookingService {
     }
   }
 
-  // ================= CONFIRM BOOKING =================
+  // ================= PAYMENT SUCCESS (CALLED BY PAYMENT SERVICE) =================
+
+  async markBookingPaid(bookingId, paymentData) {
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    booking.paymentStatus = "paid";
+
+    booking.payment = {
+      transactionId: paymentData.transactionId,
+      method: paymentData.method,
+      paidAt: new Date()
+    };
+
+    booking.status = "confirmed";
+    booking.confirmedAt = new Date();
+    booking.confirmedBy = "payment_system";
+
+    const service = await Service.findById(booking.serviceId);
+
+    if (service?.postBookingDetails) {
+
+      booking.postBookingDetailsRevealed = true;
+
+      booking.revealedDetails = {
+        ...service.postBookingDetails,
+        revealedAt: new Date()
+      };
+
+    }
+
+    await booking.save();
+
+    await this.sendConfirmationNotification(booking);
+
+    return booking;
+  }
+
+  // ================= CONFIRM BOOKING (MANUAL PROVIDER CONFIRMATION) =================
 
   async confirmBooking(bookingId, providerId) {
 
@@ -169,13 +195,9 @@ class BookingService {
         throw new Error('Booking not found');
       }
 
-      if (!['pending', 'confirmed'].includes(booking.status)) {
+      if (!['pending_payment','confirmed'].includes(booking.status)) {
         throw new Error('Booking cannot be cancelled');
       }
-
-      const service = await Service.findById(booking.serviceId).session(session);
-
-      const refundAmount = this.calculateRefund(booking, service);
 
       const isUser = cancelledBy.startsWith('user');
 
@@ -186,9 +208,7 @@ class BookingService {
       booking.cancellation = {
         cancelledAt: new Date(),
         cancelledBy,
-        reason,
-        refundEligible: refundAmount > 0,
-        refundAmount
+        reason
       };
 
       await booking.save({ session });
@@ -200,16 +220,8 @@ class BookingService {
         session
       );
 
-      if (service) {
-        await service.decrementBooking(session);
-      }
-
       await session.commitTransaction();
       session.endSession();
-
-      if (refundAmount > 0) {
-        await this.processRefund(booking, refundAmount);
-      }
 
       await this.sendCancellationNotification(booking);
 
@@ -249,47 +261,6 @@ class BookingService {
     return booking;
   }
 
-  // ================= PAYMENT =================
-
-  async processPayment(bookingId, paymentDetails) {
-
-    const booking = await Booking.findById(bookingId);
-
-    if (!booking) {
-      throw new Error('Booking not found');
-    }
-
-    booking.payment = {
-      status: 'completed',
-      method: paymentDetails.method,
-      transactionId: paymentDetails.transactionId,
-      paidAt: new Date()
-    };
-
-    booking.status = 'confirmed';
-
-    await booking.save();
-
-    return booking;
-  }
-
-  async processRefund(booking, refundAmount) {
-
-    if (!booking.payment) {
-      throw new Error("Cannot refund booking without payment");
-    }
-
-    booking.payment.status = "refunded";
-    booking.payment.refundedAt = new Date();
-    booking.payment.refundAmount = refundAmount;
-
-    booking.status = "refunded";
-
-    await booking.save();
-
-    return { success: true };
-  }
-
   // ================= PRICING =================
 
   calculateServiceFee(price) {
@@ -298,30 +269,6 @@ class BookingService {
 
   calculateTaxes(price) {
     return Math.round(price * 0.18);
-  }
-
-  calculateRefund(booking, service) {
-
-    if (!booking.payment || booking.payment.status !== 'completed') {
-      return 0;
-    }
-
-    const bookingDate = new Date(booking.bookingDate);
-    const now = new Date();
-
-    const hours = (bookingDate - now) / (1000 * 60 * 60);
-
-    const policy = service?.bookingSettings?.cancellationPolicy || 'moderate';
-
-    if (policy === 'flexible' && hours > 24) {
-      return booking.pricing.totalAmount;
-    }
-
-    if (policy === 'moderate' && hours > 12) {
-      return Math.round(booking.pricing.totalAmount * 0.5);
-    }
-
-    return 0;
   }
 
   // ================= NOTIFICATIONS =================

@@ -1,86 +1,85 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const bookingController = require('../controllers/booking.controller');
-const authMiddleware = require('../middlewares/auth.middleware');
-const roleMiddleware = require('../middlewares/role.middleware');
 
-// ==================== USER ROUTES (Authenticated Users) ====================
+const authMiddleware = require("../middlewares/auth.middleware");
+const roleMiddleware = require("../middlewares/role.middleware");
 
-// Create a new booking
+const {
+  createBooking,
+  getMyBookings,
+  getBookingDetails,
+  cancelBooking,
+  getProviderBookings,
+  getTodaySchedule,
+  confirmBooking,
+  completeBooking,
+  getProviderBookingStats
+} = require("../controllers/booking.controller");
+
+
+// ── Create booking (Buyer/User) ─────────────────────────────
 router.post(
-  '/',
-  authMiddleware.authenticate,
-  bookingController.createBooking
+  "/",
+  authMiddleware,
+  createBooking
 );
 
-// Get my bookings (for users)
+
+// ── User booking routes ─────────────────────────────────────
 router.get(
-  '/my-bookings',
-  authMiddleware.authenticate,
-  bookingController.getMyBookings
+  "/my-bookings",
+  authMiddleware,
+  getMyBookings
 );
 
-// Get booking details
 router.get(
-  '/:bookingId',
-  authMiddleware.authenticate,
-  bookingController.getBookingDetails
+  "/:bookingId",
+  authMiddleware,
+  getBookingDetails
 );
 
-// Cancel booking (user or provider)
 router.post(
-  '/:bookingId/cancel',
-  authMiddleware.authenticate,
-  bookingController.cancelBooking
+  "/:bookingId/cancel",
+  authMiddleware,
+  cancelBooking
 );
 
-// Process payment
-router.post(
-  '/:bookingId/payment',
-  authMiddleware.authenticate,
-  bookingController.processPayment
-);
 
-// ==================== PROVIDER ROUTES ====================
-
-// Get provider bookings
+// ── Provider / Seller routes ────────────────────────────────
 router.get(
-  '/provider/bookings',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  bookingController.getProviderBookings
+  "/provider/bookings",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  getProviderBookings
 );
 
-// Get today's schedule
 router.get(
-  '/provider/today',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  bookingController.getTodaySchedule
+  "/provider/today",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  getTodaySchedule
 );
 
-// Confirm booking (provider)
 router.post(
-  '/:bookingId/confirm',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  bookingController.confirmBooking
+  "/:bookingId/confirm",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  confirmBooking
 );
 
-// Mark booking as completed
 router.post(
-  '/:bookingId/complete',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  bookingController.completeBooking
+  "/:bookingId/complete",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  completeBooking
 );
 
-// Get booking stats
 router.get(
-  '/provider/stats',
-  authMiddleware.authenticate,
-  roleMiddleware.checkRole(['provider', 'admin']),
-  bookingController.getProviderBookingStats
+  "/provider/stats",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  getProviderBookingStats
 );
+
 
 module.exports = router;
