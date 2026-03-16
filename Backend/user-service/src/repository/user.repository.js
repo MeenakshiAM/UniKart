@@ -23,4 +23,9 @@ exports.updateUserById = async (userId, updateData) => {
     { new: true } // return updated document
   );
 };
-
+// ✅ ADD THIS FUNCTION
+exports.findUserByVerificationToken = (token) => {
+  return User.findOne({
+    emailVerificationToken: token
+  });
+};

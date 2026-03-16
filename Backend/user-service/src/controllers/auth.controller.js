@@ -169,3 +169,23 @@ exports.verifyEmail = async (req, res) => {
 
   }
 };
+exports.approveSeller = async (req, res) => {
+  try {
+
+    const { sellerId } = req.params;
+
+    const seller = await userService.approveSeller(sellerId);
+
+    res.status(200).json({
+      message: "Seller approved successfully",
+      seller
+    });
+
+  } catch (error) {
+
+    res.status(400).json({
+      message: error.message
+    });
+
+  }
+};

@@ -3,7 +3,7 @@ const sellerRepo = require("../repository/sellerProfile.repository");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { sendVerificationEmail } = require("../utils/sendEmail");
+const sendVerificationEmail = require("../utils/sendEmail");
 
 
 // -------- Validation Functions --------
@@ -38,7 +38,17 @@ exports.registerUser = async ({
 }) => {
 
   const existingUser = await userRepo.findUserByEmail(email);
-  if (existingUser) throw new Error("Email already exists");
+
+if (existingUser) {
+
+  if (existingUser.emailVerified) {
+    throw new Error("Email already exists");
+  }
+
+  // delete unverified account
+  await userRepo.deleteUserById(existingUser._id);
+
+}
 
   if (!isValidRegisterNumber(registerNumber))
     throw new Error("Invalid registration number");
