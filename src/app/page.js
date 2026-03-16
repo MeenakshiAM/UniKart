@@ -1,14 +1,16 @@
-import { Star, TrendingUp, Award } from "lucide-react";
+"use client";
+
+import { Star, TrendingUp, Award, ShoppingCart } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Footer from "./components/Footer";
 import Link from "next/link";
 
 const featuredProducts = [
-  { id: 1, name: "Chocolate Truffle Cake", seller: "Sarah's Bakery", price: 450, rating: 4.8, image: "🧁" },
-  { id: 2, name: "Handmade Scrunchies", seller: "Craft Corner", price: 150, rating: 4.9, image: "✨" },
-  { id: 3, name: "Math Tutoring", seller: "Priya Tutors", price: 300, rating: 5.0, image: "📚" },
-  { id: 4, name: "Custom Portraits", seller: "ArtByRaj", price: 800, rating: 4.7, image: "🎨" }
+  { id: 1, name: "Chocolate Truffle Cake", seller: "Sarah's Bakery", price: 450, rating: 4.8, image: "🧁", category: "products" },
+  { id: 2, name: "Handmade Scrunchies", seller: "Craft Corner", price: 150, rating: 4.9, image: "✨", category: "products" },
+  { id: 3, name: "Math Tutoring", seller: "Priya Tutors", price: 300, rating: 5.0, image: "📚", category: "services" },
+  { id: 4, name: "Custom Portraits", seller: "ArtByRaj", price: 800, rating: 4.7, image: "🎨", category: "services" }
 ];
 
 const topSellers = [
@@ -18,6 +20,30 @@ const topSellers = [
 ];
 
 export default function Home() {
+  
+  // Add to cart function - prevents duplicates
+  const addToCart = (product) => {
+    if (typeof window !== 'undefined') {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      
+      // Check if product already exists in cart
+      const existingItemIndex = cart.findIndex(item => item.id === product.id);
+      
+      if (existingItemIndex !== -1) {
+        // Product exists - increase quantity
+        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
+        alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+      } else {
+        // New product - add to cart
+        cart.push({ ...product, quantity: 1 });
+        alert(`${product.name} added to cart!`);
+      }
+      
+      localStorage.setItem('cart', JSON.stringify(cart));
+      window.dispatchEvent(new Event('storage'));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -33,22 +59,33 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredProducts.map(product => (
-              <Link key={product.id} href="/shop">
-                <div className="product-card group cursor-pointer">
-                  <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center text-6xl mb-4 group-hover:scale-105 transition-transform">
+              <div key={product.id} className="product-card group">
+                <Link href="/shop">
+                  <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center text-6xl mb-4 group-hover:scale-105 transition-transform cursor-pointer">
                     {product.image}
                   </div>
+                </Link>
+                <div className="p-4">
                   <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
                   <p className="text-sm text-gray-600 mb-2">by {product.seller}</p>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <span className="text-xl font-bold text-indigo-600">₹{product.price}</span>
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                       <span className="text-sm font-medium">{product.rating}</span>
                     </div>
                   </div>
+                  
+                  {/* Add to Cart Button */}
+                  <button
+                    onClick={() => addToCart(product)}
+                    className="w-full py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Add to Cart
+                  </button>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 

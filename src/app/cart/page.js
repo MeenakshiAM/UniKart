@@ -307,8 +307,16 @@ export default function Cart() {
                 <div key={index} className="bg-white rounded-xl shadow-sm p-6 flex gap-4 hover:shadow-md transition-shadow">
                   
                   {/* Product Image */}
-                  <div className="w-24 h-24 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center text-4xl">
-                    {item.image}
+                  <div className="w-24 h-24 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center text-4xl overflow-hidden">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name || 'Product Image'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-gray-400">No Image</span>
+                    )}
                   </div>
 
                   {/* Product Info */}
