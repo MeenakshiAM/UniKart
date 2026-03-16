@@ -6,36 +6,34 @@ const roleMiddleware = require("../middlewares/role.middleware");
 
 const {
   createBooking,
-  getMyBookings,
-  getBookingDetails,
+  confirmBooking,
   cancelBooking,
+  completeBooking,
+  getMyBookings,
   getProviderBookings,
   getTodaySchedule,
-  confirmBooking,
-  completeBooking,
-  getProviderBookingStats
+  getBookingDetails
 } = require("../controllers/booking.controller");
 
 
-// ── Create booking (Buyer/User) ─────────────────────────────
+// ─────────────────────────────────────────────
+// USER CREATE BOOKING
+// ─────────────────────────────────────────────
 router.post(
   "/",
   authMiddleware,
+  roleMiddleware("BUYER"),
   createBooking
 );
 
 
-// ── User booking routes ─────────────────────────────────────
+// ─────────────────────────────────────────────
+// USER BOOKING ROUTES
+// ─────────────────────────────────────────────
 router.get(
   "/my-bookings",
   authMiddleware,
   getMyBookings
-);
-
-router.get(
-  "/:bookingId",
-  authMiddleware,
-  getBookingDetails
 );
 
 router.post(
@@ -45,7 +43,9 @@ router.post(
 );
 
 
-// ── Provider / Seller routes ────────────────────────────────
+// ─────────────────────────────────────────────
+// PROVIDER (SELLER) DASHBOARD ROUTES
+// ─────────────────────────────────────────────
 router.get(
   "/provider/bookings",
   authMiddleware,
@@ -60,6 +60,10 @@ router.get(
   getTodaySchedule
 );
 
+
+// ─────────────────────────────────────────────
+// PROVIDER ACTIONS
+// ─────────────────────────────────────────────
 router.post(
   "/:bookingId/confirm",
   authMiddleware,
@@ -74,11 +78,14 @@ router.post(
   completeBooking
 );
 
+
+// ─────────────────────────────────────────────
+// SINGLE BOOKING DETAILS
+// ─────────────────────────────────────────────
 router.get(
-  "/provider/stats",
+  "/:bookingId",
   authMiddleware,
-  roleMiddleware("SELLER"),
-  getProviderBookingStats
+  getBookingDetails
 );
 
 

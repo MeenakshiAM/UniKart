@@ -5,80 +5,136 @@ const authMiddleware = require("../middlewares/auth.middleware");
 const roleMiddleware = require("../middlewares/role.middleware");
 
 const {
-  createBooking,
-  getMyBookings,
-  getBookingDetails,
-  cancelBooking,
-  getProviderBookings,
-  getTodaySchedule,
-  confirmBooking,
-  completeBooking,
-  getProviderBookingStats
-} = require("../controllers/booking.controller");
+  createProduct,
+  getMyProducts,
+  getAllActiveProducts,
+  getProductsBySellerId,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+  hideProduct,
+  unhideProduct,
+  getMyDrafts,
+  getDraftById,
+  getMyRejectedProducts,
+  getMyHiddenProducts,
+  getMyOutOfStock,
+  resubmitProduct,
+  reduceStock,
+  restoreStock,
+  adminHideProduct
+} = require("../controllers/product.controller");
+
+const upload = require("../middlewares/upload.middleware");
 
 
-// ── Create booking (Buyer/User) ─────────────────────────────
+// ─────────────────────────────────────────────
+// SELLER CREATE PRODUCT
+// ─────────────────────────────────────────────
 router.post(
-  "/",
-  authMiddleware,
-  createBooking
-);
-
-
-// ── User booking routes ─────────────────────────────────────
-router.get(
-  "/my-bookings",
-  authMiddleware,
-  getMyBookings
-);
-
-router.get(
-  "/:bookingId",
-  authMiddleware,
-  getBookingDetails
-);
-
-router.post(
-  "/:bookingId/cancel",
-  authMiddleware,
-  cancelBooking
-);
-
-
-// ── Provider / Seller routes ────────────────────────────────
-router.get(
-  "/provider/bookings",
+  "/create",
   authMiddleware,
   roleMiddleware("SELLER"),
-  getProviderBookings
+  upload.array("images", 5),
+  createProduct
 );
+
+
+// ─────────────────────────────────────────────
+// PUBLIC ROUTES
+// ─────────────────────────────────────────────
+router.get("/", getAllActiveProducts);
+router.get("/seller/:sellerId", getProductsBySellerId);
+
+
+// ─────────────────────────────────────────────
+// SELLER DASHBOARD ROUTES
+// ─────────────────────────────────────────────
+router.get("/my", authMiddleware, roleMiddleware("SELLER"), getMyProducts);
+
+router.get("/my/drafts", authMiddleware, roleMiddleware("SELLER"), getMyDrafts);
+router.get("/my/drafts/:id", authMiddleware, roleMiddleware("SELLER"), getDraftById);
+
+router.get("/my/rejected", authMiddleware, roleMiddleware("SELLER"), getMyRejectedProducts);
+router.get("/my/hidden", authMiddleware, roleMiddleware("SELLER"), getMyHiddenProducts);
 
 router.get(
-  "/provider/today",
+  "/my/out-of-stock",
   authMiddleware,
   roleMiddleware("SELLER"),
-  getTodaySchedule
+  getMyOutOfStock
 );
 
-router.post(
-  "/:bookingId/confirm",
+
+// ─────────────────────────────────────────────
+// SINGLE PRODUCT (PUBLIC)
+// ─────────────────────────────────────────────
+router.get("/:id", getProductById);
+
+
+// ─────────────────────────────────────────────
+// SELLER ACTIONS
+// ─────────────────────────────────────────────
+router.patch(
+  "/:id",
   authMiddleware,
   roleMiddleware("SELLER"),
-  confirmBooking
+  upload.array("images", 5),
+  updateProduct
 );
 
-router.post(
-  "/:bookingId/complete",
+router.patch(
+  "/:id/hide",
   authMiddleware,
   roleMiddleware("SELLER"),
-  completeBooking
+  hideProduct
 );
 
-router.get(
-  "/provider/stats",
+router.patch(
+  "/:id/unhide",
   authMiddleware,
   roleMiddleware("SELLER"),
-  getProviderBookingStats
+  unhideProduct
+);
+
+router.patch(
+  "/:id/resubmit",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  upload.array("images", 5),
+  resubmitProduct
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  deleteProduct
+);
+
+
+// ─────────────────────────────────────────────
+// INTERNAL SERVICE ROUTES (ORDER SERVICE)
+// ─────────────────────────────────────────────
+router.patch(
+  "/:id/reduce-stock",
+  authMiddleware,
+  reduceStock
+);
+
+router.patch(
+  "/:id/restore-stock",
+  authMiddleware,
+  restoreStock
+);
+
+
+// ─────────────────────────────────────────────
+// INTERNAL REPORT AUTOMATION SERVICE
+// ─────────────────────────────────────────────
+router.patch(
+  "/:id/admin-hide",
+  adminHideProduct
 );
 
 

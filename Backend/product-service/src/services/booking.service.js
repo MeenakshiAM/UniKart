@@ -14,7 +14,7 @@ class BookingService {
 
     try {
 
-      const { serviceId, slotId, timeSlotId, participants = 1 } = bookingData;
+      const { serviceId, slotId, timeSlotId, participants = 1, userId } = bookingData;
 
       const service = await Service.findById(serviceId).session(session);
 
@@ -46,11 +46,13 @@ class BookingService {
       const totalAmount = (basePrice + serviceFee + taxes) * participants;
 
       const booking = new Booking({
-        ...bookingData,
+
+        userId,
+        serviceId,
+        slotId,
+        timeSlotId,
 
         providerId: service.providerId,
-        providerName: service.providerName,
-        providerEmail: service.providerEmail,
 
         bookingDate: slot.date,
         startTime: timeSlot.startTime,
@@ -67,6 +69,7 @@ class BookingService {
 
         paymentStatus: "pending",
         status: "pending_payment"
+
       });
 
       await booking.save({ session });
@@ -97,7 +100,7 @@ class BookingService {
     }
   }
 
-  // ================= PAYMENT SUCCESS (CALLED BY PAYMENT SERVICE) =================
+  // ================= PAYMENT SUCCESS =================
 
   async markBookingPaid(bookingId, paymentData) {
 
@@ -105,6 +108,10 @@ class BookingService {
 
     if (!booking) {
       throw new Error("Booking not found");
+    }
+
+    if (booking.paymentStatus === "paid") {
+      return booking;
     }
 
     booking.paymentStatus = "paid";
@@ -139,7 +146,7 @@ class BookingService {
     return booking;
   }
 
-  // ================= CONFIRM BOOKING (MANUAL PROVIDER CONFIRMATION) =================
+  // ================= PROVIDER CONFIRM =================
 
   async confirmBooking(bookingId, providerId) {
 
@@ -152,26 +159,13 @@ class BookingService {
       throw new Error('Booking not found');
     }
 
-    if (booking.status !== 'pending') {
-      throw new Error('Booking cannot be confirmed');
+    if (booking.status !== 'pending_payment') {
+      throw new Error('Booking cannot be confirmed yet');
     }
 
     booking.status = 'confirmed';
     booking.confirmedAt = new Date();
     booking.confirmedBy = providerId;
-
-    const service = await Service.findById(booking.serviceId);
-
-    if (service?.postBookingDetails) {
-
-      booking.postBookingDetailsRevealed = true;
-
-      booking.revealedDetails = {
-        ...service.postBookingDetails,
-        revealedAt: new Date()
-      };
-
-    }
 
     await booking.save();
 
@@ -195,7 +189,7 @@ class BookingService {
         throw new Error('Booking not found');
       }
 
-      if (!['pending_payment','confirmed'].includes(booking.status)) {
+      if (!['pending_payment', 'confirmed'].includes(booking.status)) {
         throw new Error('Booking cannot be cancelled');
       }
 
@@ -249,6 +243,10 @@ class BookingService {
       throw new Error('Booking not found');
     }
 
+    if (booking.status !== 'confirmed') {
+      throw new Error('Booking not confirmed yet');
+    }
+
     booking.status = 'completed';
 
     await booking.save();
@@ -275,9 +273,9 @@ class BookingService {
 
   async sendBookingNotifications(booking) {
 
-    console.log('Booking notification', booking._id);
+    console.log('Booking created:', booking._id);
 
-    if (!booking.notifications) booking.notifications = [];
+    booking.notifications = booking.notifications || [];
 
     booking.notifications.push({
       type: 'system',
@@ -290,9 +288,9 @@ class BookingService {
 
   async sendConfirmationNotification(booking) {
 
-    console.log('Confirmation sent', booking._id);
+    console.log('Booking confirmed:', booking._id);
 
-    if (!booking.notifications) booking.notifications = [];
+    booking.notifications = booking.notifications || [];
 
     booking.notifications.push({
       type: 'system',
@@ -305,9 +303,9 @@ class BookingService {
 
   async sendCancellationNotification(booking) {
 
-    console.log('Cancellation sent', booking._id);
+    console.log('Booking cancelled:', booking._id);
 
-    if (!booking.notifications) booking.notifications = [];
+    booking.notifications = booking.notifications || [];
 
     booking.notifications.push({
       type: 'system',
