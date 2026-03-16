@@ -10,6 +10,8 @@ const uploadMiddleware = require('../middlewares/upload.middleware');
 
 // ==================== PUBLIC ROUTES ====================
 
+// ==================== PUBLIC ROUTES ====================
+
 // List services
 router.get('/', serviceController.listServices);
 
@@ -21,8 +23,6 @@ router.get('/:serviceId/slots', serviceController.getServiceSlots);
 
 // Get single service
 router.get('/:serviceId', serviceController.getService);
-
-
 
 // ==================== PROVIDER ROUTES ====================
 

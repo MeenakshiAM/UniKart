@@ -10,6 +10,19 @@ class ServiceService {
   async createService(serviceData, files = []) {
     try {
 
+      // ---------- MODERATION CHECK ----------
+      const moderationResult = await moderationService.moderateContent(
+        `${serviceData.title} ${serviceData.description}`
+      );
+
+      if (!moderationResult.isAllowed) {
+        return {
+          status: "rejected",
+          reason: moderationResult.reason || "Content violates platform policy"
+        };
+      }
+
+      // ---------- IMAGE UPLOAD ----------
       const images = [];
 
       if (files && files.length > 0) {
@@ -34,16 +47,6 @@ class ServiceService {
         status: "pending_approval"
       });
 
-      const moderationResult = await moderationService.moderateContent({
-        title: serviceData.title,
-        description: serviceData.description
-      });
-
-      if (moderationResult.flagged) {
-        service.status = "rejected";
-        service.rejectionReason = "Inappropriate content detected";
-      }
-
       await service.save();
 
       return service;
@@ -53,13 +56,13 @@ class ServiceService {
     }
   }
 
-
+  // ================= GET SERVICE =================
 
   async getServiceById(serviceId, incrementView = false) {
 
     const service = await Service.findById(serviceId);
 
-    if (!service || !service.isActive) {
+    if (!service || !service.isActive || service.status !== "active") {
       throw new Error("Service not found");
     }
 
@@ -70,7 +73,7 @@ class ServiceService {
     return service;
   }
 
-
+  // ================= UPDATE SERVICE =================
 
   async updateService(serviceId, providerId, updateData, files = []) {
 
@@ -83,8 +86,8 @@ class ServiceService {
       throw new Error("Service not found or unauthorized");
     }
 
-    // Handle images
-    if (files.length > 0) {
+    // ---------- IMAGE UPDATE ----------
+    if (files && files.length > 0) {
 
       for (const img of service.images) {
         if (img.publicId) {
@@ -110,19 +113,18 @@ class ServiceService {
       updateData.images = newImages;
     }
 
-    // Re-moderate if text changed
+    // ---------- RE-MODERATE TEXT ----------
     if (updateData.title || updateData.description) {
 
-      updateData.status = "pending_approval";
+      const textToModerate = `${updateData.title || service.title} ${updateData.description || service.description}`;
 
-      const moderationResult = await moderationService.moderateContent({
-        title: updateData.title || service.title,
-        description: updateData.description || service.description
-      });
+      const moderationResult = await moderationService.moderateContent(textToModerate);
 
-      if (moderationResult.flagged) {
+      if (!moderationResult.isAllowed) {
         updateData.status = "rejected";
-        updateData.rejectionReason = "Inappropriate content detected";
+        updateData.rejectionReason = moderationResult.reason || "Content violates platform policy";
+      } else {
+        updateData.status = "pending_approval";
       }
     }
 
@@ -133,7 +135,7 @@ class ServiceService {
     return service;
   }
 
-
+  // ================= DELETE SERVICE =================
 
   async deleteService(serviceId, providerId) {
 
@@ -159,8 +161,6 @@ class ServiceService {
     return { message: "Service deleted successfully" };
   }
 
-
-
   // ================= SERVICE LISTING =================
 
   async listServices(filters = {}, page = 1, limit = 20) {
@@ -182,19 +182,18 @@ class ServiceService {
     };
 
     if (category) query.category = category;
-
     if (serviceType) query.serviceType = serviceType;
-
-    if (venue) query["location.venue"] = new RegExp(venue, "i");
-
     if (providerId) query.providerId = providerId;
+
+    if (venue) {
+      query["location.venue"] = new RegExp(venue, "i");
+    }
 
     if (minPrice || maxPrice) {
 
       query["pricing.basePrice"] = {};
 
       if (minPrice) query["pricing.basePrice"].$gte = minPrice;
-
       if (maxPrice) query["pricing.basePrice"].$lte = maxPrice;
     }
 
@@ -226,8 +225,6 @@ class ServiceService {
     };
   }
 
-
-
   // ================= ADMIN =================
 
   async approveService(serviceId, adminId, adminName) {
@@ -251,8 +248,6 @@ class ServiceService {
     return service;
   }
 
-
-
   async rejectService(serviceId, reason) {
 
     const service = await Service.findById(serviceId);
@@ -262,15 +257,12 @@ class ServiceService {
     }
 
     service.status = "rejected";
-
     service.rejectionReason = reason;
 
     await service.save();
 
     return service;
   }
-
-
 
   // ================= SLOT MANAGEMENT =================
 
@@ -296,12 +288,9 @@ class ServiceService {
     return slot;
   }
 
-
-
   async getServiceSlots(serviceId, startDate, endDate) {
 
     const start = new Date(startDate);
-
     const end = new Date(endDate);
 
     const slots = await Slot.find({
@@ -312,8 +301,6 @@ class ServiceService {
 
     return slots;
   }
-
-
 
   async deleteSlot(slotId, providerId) {
 
@@ -339,15 +326,11 @@ class ServiceService {
     return { message: "Slot deleted successfully" };
   }
 
-
-
   // ================= PROVIDER STATS =================
 
   async getProviderStats(providerId) {
 
-    const totalServices = await Service.countDocuments({
-      providerId
-    });
+    const totalServices = await Service.countDocuments({ providerId });
 
     const activeServices = await Service.countDocuments({
       providerId,

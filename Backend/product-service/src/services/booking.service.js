@@ -14,48 +14,37 @@ class BookingService {
 
     try {
 
-      const { serviceId, slotId, timeSlotId, userId, participants = 1 } = bookingData;
+      const { serviceId, slotId, timeSlotId, participants = 1 } = bookingData;
 
-      // 1. Fetch service
       const service = await Service.findById(serviceId).session(session);
 
       if (!service || service.status !== 'active') {
         throw new Error('Service not available');
       }
 
-      // 2. Fetch slot
       const slot = await Slot.findById(slotId).session(session);
 
       if (!slot) {
         throw new Error('Slot not found');
       }
 
-      // 3. Find timeslot
       const timeSlot = slot.timeSlots.id(timeSlotId);
 
       if (!timeSlot) {
         throw new Error('Time slot not found');
       }
 
-      // 4. Capacity check
-      const remainingCapacity = timeSlot.capacity.max - timeSlot.capacity.booked;
-
-      if (remainingCapacity <= 0) {
-        throw new Error('Slot fully booked');
+      if (timeSlot.capacity.booked + participants > timeSlot.capacity.max) {
+        throw new Error('Not enough capacity in this slot');
       }
 
-      if (participants > remainingCapacity) {
-        throw new Error(`Only ${remainingCapacity} spots remaining`);
-      }
-
-      // 5. Pricing
       const basePrice = service.pricing.basePrice;
+
       const serviceFee = this.calculateServiceFee(basePrice);
       const taxes = this.calculateTaxes(basePrice);
 
       const totalAmount = (basePrice + serviceFee + taxes) * participants;
 
-      // 6. Create booking
       const booking = new Booking({
         ...bookingData,
 
@@ -82,13 +71,16 @@ class BookingService {
 
       await booking.save({ session });
 
-      // 7. Update slot capacity
-      await slot.bookSlot(timeSlotId, booking._id, participants, session);
+      await Slot.bookTimeSlot(
+        slotId,
+        timeSlotId,
+        booking._id,
+        participants,
+        session
+      );
 
-      // 8. Update service stats
       await service.incrementBooking(session);
 
-      // 9. Auto confirmation
       if (service.bookingSettings.autoAcceptBooking) {
 
         booking.confirmedAt = new Date();
@@ -108,7 +100,7 @@ class BookingService {
       await session.commitTransaction();
       session.endSession();
 
-      await this.sendBookingNotifications(booking, service);
+      await this.sendBookingNotifications(booking);
 
       return booking;
 
@@ -131,7 +123,7 @@ class BookingService {
     });
 
     if (!booking) {
-      throw new Error('Booking not found or unauthorized');
+      throw new Error('Booking not found');
     }
 
     if (booking.status !== 'pending') {
@@ -177,7 +169,7 @@ class BookingService {
         throw new Error('Booking not found');
       }
 
-      if (!['pending', 'confirmed', 'payment_completed'].includes(booking.status)) {
+      if (!['pending', 'confirmed'].includes(booking.status)) {
         throw new Error('Booking cannot be cancelled');
       }
 
@@ -201,14 +193,13 @@ class BookingService {
 
       await booking.save({ session });
 
-      // release slot
-      const slot = await Slot.findById(booking.slotId).session(session);
+      await Slot.releaseTimeSlot(
+        booking.slotId,
+        booking.timeSlotId,
+        booking._id,
+        session
+      );
 
-      if (slot) {
-        await slot.releaseSlot(booking.timeSlotId, booking.participants, session);
-      }
-
-      // decrement service bookings
       if (service) {
         await service.decrementBooking(session);
       }
@@ -275,7 +266,7 @@ class BookingService {
       paidAt: new Date()
     };
 
-    booking.status = 'payment_completed';
+    booking.status = 'confirmed';
 
     await booking.save();
 
@@ -284,11 +275,15 @@ class BookingService {
 
   async processRefund(booking, refundAmount) {
 
-    booking.payment.status = 'refunded';
+    if (!booking.payment) {
+      throw new Error("Cannot refund booking without payment");
+    }
+
+    booking.payment.status = "refunded";
     booking.payment.refundedAt = new Date();
     booking.payment.refundAmount = refundAmount;
 
-    booking.status = 'refunded';
+    booking.status = "refunded";
 
     await booking.save();
 
@@ -307,7 +302,7 @@ class BookingService {
 
   calculateRefund(booking, service) {
 
-    if (booking.payment.status !== 'completed') {
+    if (!booking.payment || booking.payment.status !== 'completed') {
       return 0;
     }
 
@@ -335,11 +330,12 @@ class BookingService {
 
     console.log('Booking notification', booking._id);
 
+    if (!booking.notifications) booking.notifications = [];
+
     booking.notifications.push({
-      type: 'email',
+      type: 'system',
       sentAt: new Date(),
-      status: 'sent',
-      message: 'Booking confirmation'
+      message: 'Booking created'
     });
 
     await booking.save();
@@ -349,10 +345,11 @@ class BookingService {
 
     console.log('Confirmation sent', booking._id);
 
+    if (!booking.notifications) booking.notifications = [];
+
     booking.notifications.push({
-      type: 'email',
+      type: 'system',
       sentAt: new Date(),
-      status: 'sent',
       message: 'Booking confirmed'
     });
 
@@ -363,10 +360,11 @@ class BookingService {
 
     console.log('Cancellation sent', booking._id);
 
+    if (!booking.notifications) booking.notifications = [];
+
     booking.notifications.push({
-      type: 'email',
+      type: 'system',
       sentAt: new Date(),
-      status: 'sent',
       message: 'Booking cancelled'
     });
 
