@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Heart, User, Menu, X } from 'lucide-react';
-import SignIn from './SignIn';
 
 const Navbar = () => {
   const router = useRouter();
@@ -16,6 +15,13 @@ const Navbar = () => {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Auth Modal States
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [userType, setUserType] = useState('buyer');
+
   useEffect(() => {
     const updateCounts = () => {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -25,10 +31,10 @@ const Navbar = () => {
       setWishlistCount(wishlist.length);
 
       const token = localStorage.getItem('authToken');
-      const name = localStorage.getItem('userName');
+      const storedName = localStorage.getItem('userName');
       if (token) {
         setIsAuthenticated(true);
-        setUserName(name || 'User');
+        setUserName(storedName || 'User');
       }
     };
 
@@ -45,6 +51,53 @@ const Navbar = () => {
     setUserName('');
     setShowAccountMenu(false);
     router.push('/');
+  };
+
+  const handleAuthSubmit = (e) => {
+    e.preventDefault();
+    
+    if (isLogin) {
+      // Login Logic
+      if (email && password) {
+        const mockToken = 'mock-jwt-token-' + Date.now();
+        const displayName = email.split('@')[0];
+        
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('userName', displayName);
+        localStorage.setItem('userType', 'buyer');
+        
+        setIsAuthenticated(true);
+        setUserName(displayName);
+        setShowAuthModal(false);
+        
+        // Reset form
+        setEmail('');
+        setPassword('');
+      } else {
+        alert('Please enter email and password');
+      }
+    } else {
+      // Signup Logic
+      if (name && email && password) {
+        const mockToken = 'mock-jwt-token-' + Date.now();
+        
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('userName', name);
+        localStorage.setItem('userType', userType);
+        
+        setIsAuthenticated(true);
+        setUserName(name);
+        setShowAuthModal(false);
+        
+        // Reset form
+        setName('');
+        setEmail('');
+        setPassword('');
+        setUserType('buyer');
+      } else {
+        alert('Please fill all fields');
+      }
+    }
   };
 
   const navLinks = [
@@ -185,14 +238,133 @@ const Navbar = () => {
 
       {/* Auth Modal */}
       {showAuthModal && (
-        <SignIn
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={(name) => {
-            setIsAuthenticated(true);
-            setUserName(name);
-            setShowAuthModal(false);
-          }}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8 relative">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Title */}
+            <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+              {isLogin ? 'Welcome Back!' : 'Join UniKart'}
+            </h2>
+
+            {/* Toggle Login/Signup */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setIsLogin(true)}
+                className={`flex-1 py-2 rounded-lg font-semibold transition-colors ${
+                  isLogin
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                onClick={() => setIsLogin(false)}
+                className={`flex-1 py-2 rounded-lg font-semibold transition-colors ${
+                  !isLogin
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleAuthSubmit} className="space-y-4">
+              {!isLogin && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    style={{ color: '#111827' }}
+                    placeholder="John Doe"
+                    required={!isLogin}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                  style={{ color: '#111827' }}
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                  style={{ color: '#111827' }}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+
+              {!isLogin && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    I am a
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="buyer"
+                        checked={userType === 'buyer'}
+                        onChange={(e) => setUserType(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-gray-700">Buyer</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="seller"
+                        checked={userType === 'seller'}
+                        onChange={(e) => setUserType(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-gray-700">Seller</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mt-6"
+              >
+                {isLogin ? 'Login' : 'Sign Up'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </>
   );
