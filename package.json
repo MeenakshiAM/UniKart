@@ -18,6 +18,20 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "nodemon": "^3.1.14",
     "tailwindcss": "^4"
-  }
+  },
+  "description": "Many small sellers lack a secure, affordable, and transparent platform to conduct online business, while buyers struggle with trust, product quality, and safe payments. UniKart addresses this by providing a cloud-enabled e-commerce system built with Next.js, Node.js, Express, and MongoDB. It offers role-based modules, secure Razorpay payments with commission/refund control, and AWS-backed deployment. UniKart ensures reliability, safety, and a smooth digital commerce experience for all users.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeenakshiAM/UniKart.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MeenakshiAM/UniKart/issues"
+  },
+  "homepage": "https://github.com/MeenakshiAM/UniKart#readme"
 }
