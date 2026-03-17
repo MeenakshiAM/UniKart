@@ -3,7 +3,7 @@ const sellerRepo = require("../repository/sellerProfile.repository");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { sendVerificationEmail } = require("../utils/sendEmail");
+const sendVerificationEmail = require("../utils/sendEmail");
 
 
 // -------- Validation Functions --------
@@ -38,7 +38,17 @@ exports.registerUser = async ({
 }) => {
 
   const existingUser = await userRepo.findUserByEmail(email);
-  if (existingUser) throw new Error("Email already exists");
+
+if (existingUser) {
+
+  if (existingUser.emailVerified) {
+    throw new Error("Email already exists");
+  }
+
+  // delete unverified account
+  await userRepo.deleteUserById(existingUser._id);
+
+}
 
   if (!isValidRegisterNumber(registerNumber))
     throw new Error("Invalid registration number");
@@ -153,14 +163,15 @@ exports.loginUser = async ({ email, password }) => {
   if (!isMatch) throw new Error("Invalid email or password");
 
   const token = jwt.sign(
-    {
-      userId: user._id,
-      role: user.role,
-      isSeller: user.isSeller
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
+  {
+    userId: user._id,
+    role: user.role,
+    isSeller: user.isSeller,
+    email: user.email   // <--- add this
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN }
+);
 
   return {
     token,

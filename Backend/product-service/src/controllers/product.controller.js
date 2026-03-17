@@ -1,5 +1,26 @@
 const productService = require("../services/product.service");
-
+const {
+  createProduct,
+  getMyProducts,
+  getAllActiveProducts,
+  getProductsBySellerId,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+  hideProduct,
+  unhideProduct,
+  getMyDrafts,
+  getDraftById,
+  getMyRejectedProducts,
+  getMyHiddenProducts,
+  getMyOutOfStock,
+  resubmitProductService, // <--- add this
+  reduceProductStock, // adjust names if needed
+  restoreProductStock,
+  adminHideProduct,
+  approveProduct,
+  rejectProduct
+} = require("../services/product.service");
 // Create Product
 exports.createProduct = async (req, res) => {
   try {
@@ -307,45 +328,24 @@ exports.getMyHiddenProducts = async (req, res) => {
 
 exports.resubmitProduct = async (req, res) => {
   try {
-    const sellerId = req.user.userId;
     const { id } = req.params;
+    const updateData = req.body;
+    const sellerId = req.user._id;
 
-    const newImages = req.files
-      ? req.files.map(file => ({ url: file.path, public_id: file.filename }))
-      : undefined;
-
-    if (newImages) {
-      const oldProduct = await productService.getProductByIdService(id);
-      if (oldProduct.images && oldProduct.images.length > 0) {
-        for (const img of oldProduct.images) {
-          await cloudinary.uploader.destroy(img.public_id);
-        }
-      }
-    }
-
-    const productData = {
-      ...req.body,
-      ...(newImages && { images: newImages })
-    };
-
-    const product = await productService.resubmitProductService(id, sellerId, productData);
+    const product = await resubmitProductService(id, sellerId, updateData);
 
     res.status(200).json({
       success: true,
-      message: "Product resubmitted and approved",
+      message: "Product resubmitted for admin approval",
       product
     });
-
-  } catch (error) {
-    console.log("RESUBMIT PRODUCT ERROR:", error.message);
-    const status = error.message.includes("Invalid") ? 400
-      : error.message.includes("not found") ? 404
-      : error.message.includes("rejected") ? 400
-      : 500;
-    res.status(status).json({ success: false, message: error.message });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message
+    });
   }
 };
-
 // Reduce stock - called internally by order service
 exports.reduceStock = async (req, res) => {
   try {
@@ -443,4 +443,36 @@ exports.getProductByIdForSellerService = async (productId, sellerId) => {
   }
 
   return product;
+};
+
+
+// ─── Approve product ───────────────────────────────
+exports.approveProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await productService.approveProductService(id);
+    res.status(200).json({
+      success: true,
+      message: "Product approved successfully",
+      product
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// ─── Reject product ───────────────────────────────
+exports.rejectProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const product = await productService.rejectProductService(id, reason);
+    res.status(200).json({
+      success: true,
+      message: "Product rejected successfully",
+      product
+    });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
 };

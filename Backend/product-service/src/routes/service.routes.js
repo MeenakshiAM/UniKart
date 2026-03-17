@@ -5,7 +5,7 @@ const serviceController = require("../controllers/service.controller");
 
 const authMiddleware = require("../middlewares/auth.middleware");
 const roleMiddleware = require("../middlewares/role.middleware");
-const uploadMiddleware = require("../middlewares/upload.middleware");
+const uploadMiddleware = require("../middlewares/uploadService.middleware");
 
 
 // ── PUBLIC ROUTES ─────────────────────────────────────────

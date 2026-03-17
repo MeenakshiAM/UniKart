@@ -22,7 +22,9 @@ const {
   resubmitProduct,
   reduceStock,
   restoreStock,
-  adminHideProduct
+  adminHideProduct,
+  approveProduct,
+  rejectProduct
 } = require("../controllers/product.controller");
 
 const upload = require("../middlewares/upload.middleware");
@@ -137,5 +139,6 @@ router.patch(
   adminHideProduct
 );
 
-
+router.patch("/approve/:id",authMiddleware,roleMiddleware("ADMIN"), approveProduct);
+router.patch("/reject/:id",authMiddleware,roleMiddleware("ADMIN"), rejectProduct);
 module.exports = router;

@@ -8,7 +8,8 @@ const {
   login,
   testAuth,
   uploadProfileImage,
-  verifyEmail
+  verifyEmail,
+  approveSeller
 } = require("../controllers/auth.controller");
 
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -30,7 +31,12 @@ router.get(
   getAllUsers
 );
 
-
+router.patch(
+  "/approve-seller/:sellerId",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  approveSeller
+);
 // AUTH TEST
 router.get(
   "/test",

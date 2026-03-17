@@ -11,6 +11,11 @@ exports.getSellerByUserId = async (userId) => {
   return await SellerProfile.findOne({ userId });
 };
 
+// get seller by id
+exports.getSellerById = (sellerId) => {
+  return SellerProfile.findById(sellerId);
+};
+
 // UPDATE full seller profile
 exports.updateSellerByUserId = async (userId, data) => {
   return await SellerProfile.findOneAndUpdate(

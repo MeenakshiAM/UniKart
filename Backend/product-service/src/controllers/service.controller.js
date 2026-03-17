@@ -1,41 +1,47 @@
 const serviceService = require('../services/service.service');
-
+const mongoose = require("mongoose");
 class ServiceController {
 
   // ================= SERVICE CRUD =================
 
   async createService(req, res) {
     try {
-
+       console.log("req.user:", req.user)
       if (!req.user) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
+        return res.status(401).json({ success: false, message: "Unauthorized" });
       }
+
+      // Map files to Cloudinary paths for service
+      const images = req.files
+        ? req.files.map(file => ({
+            url: file.path || file.filename, // support multer-cloudinary-storage
+            publicId: file.filename || file.originalname
+          }))
+        : [];
 
       const serviceData = {
         ...req.body,
-        providerId: req.user.id,
+        providerId: req.user.userId, // NOT req.user.id
         providerName: req.user.name,
         providerEmail: req.user.email,
-        providerPhone: req.user.phone
+        providerPhone: req.user.phone,
+        images
       };
 
-      const files = req.files || [];
-
-      const service = await serviceService.createService(serviceData, files);
+      const service = await serviceService.createServiceService(serviceData);
 
       return res.status(201).json({
         success: true,
-        message: 'Service created successfully. Pending admin approval.',
+        message: "Service created successfully. Pending admin approval.",
         data: service
       });
-
     } catch (error) {
+      console.error("CREATE SERVICE ERROR:", error);
 
-      return res.status(400).json({
+      return res.status(500).json({
         success: false,
         message: error.message
       });
-
     }
   }
 
@@ -84,7 +90,7 @@ class ServiceController {
         });
       }
 
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
       const files = req.files || [];
 
       const service = await serviceService.updateService(
@@ -115,7 +121,7 @@ class ServiceController {
     try {
 
       const { serviceId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const result = await serviceService.deleteService(serviceId, providerId);
 
@@ -173,32 +179,46 @@ class ServiceController {
   }
 
 
-  async getMyServices(req, res) {
-    try {
+ async getMyServices(req, res) {
+  try {
+    const providerId = req.user.userId;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const statusFilter = req.query.status;
 
-      const providerId = req.user.id;
+    console.log("🔍 Get My Services Debug:");
+    console.log("  Provider ID:", providerId);
+    console.log("  Status filter:", statusFilter || "all");
 
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 20;
-
-      const result = await serviceService.listServices({ providerId }, page, limit);
-
-      return res.status(200).json({
-        success: true,
-        data: result.services,
-        pagination: result.pagination
-      });
-
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
+    const filters = { providerId };
+    
+    if (statusFilter) {
+      filters.status = statusFilter;
     }
-  }
 
+    // ✅ USE serviceService.listServices() instead of Service.find()
+    const result = await serviceService.listServices(
+      filters,
+      page,
+      limit
+    );
+
+    console.log("  ✅ Found:", result.services.length, "services");
+
+    return res.status(200).json({
+      success: true,
+      data: result.services,
+      pagination: result.pagination
+    });
+
+  } catch (error) {
+    console.error("❌ Get My Services Error:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
 
   async searchNearbyServices(req, res) {
     try {
@@ -241,7 +261,7 @@ class ServiceController {
     try {
 
       const { serviceId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const slot = await serviceService.createSlot(serviceId, providerId, req.body);
 
@@ -266,7 +286,7 @@ class ServiceController {
     try {
 
       const { serviceId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const { slots } = req.body;
 
@@ -335,7 +355,7 @@ class ServiceController {
     try {
 
       const { slotId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const slot = await serviceService.updateSlot(slotId, providerId, req.body);
 
@@ -360,7 +380,7 @@ class ServiceController {
     try {
 
       const { slotId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const result = await serviceService.deleteSlot(slotId, providerId);
 
@@ -383,28 +403,25 @@ class ServiceController {
   // ================= ADMIN =================
 
   async getPendingServices(req, res) {
-    try {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
 
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 20;
+    const result = await serviceService.getPendingServices(page, limit);
 
-      const result = await serviceService.getPendingServices(page, limit);
-
-      return res.status(200).json({
-        success: true,
-        data: result.services,
-        pagination: result.pagination
-      });
-
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Pending services fetched successfully",
+      data: result.services,
+      pagination: result.pagination
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
   }
+}
 
 
   async approveService(req, res) {

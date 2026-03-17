@@ -32,14 +32,13 @@ const userSchema = new mongoose.Schema(
   department: { 
     type: String 
   },
-  isEmailVerified: {
-  type: Boolean,
-  default: false
-},
-
-emailVerificationToken: {
-  type: String
-},
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String
+  },
   isSeller: { 
     type: Boolean, 
     default: false 
