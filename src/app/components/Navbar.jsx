@@ -326,36 +326,6 @@ const Navbar = () => {
                 />
               </div>
 
-              {!isLogin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    I am a
-                  </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="buyer"
-                        checked={userType === 'buyer'}
-                        onChange={(e) => setUserType(e.target.value)}
-                        className="mr-2"
-                      />
-                      <span className="text-gray-700">Buyer</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        value="seller"
-                        checked={userType === 'seller'}
-                        onChange={(e) => setUserType(e.target.value)}
-                        className="mr-2"
-                      />
-                      <span className="text-gray-700">Seller</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
               <button
                 type="submit"
                 className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mt-6"
