@@ -5,7 +5,8 @@ const userService = require("../services/user.service");
 // ---------- REGISTER USER ----------
 exports.registerUser = async (req, res) => {
   try {
-
+    const { age } = req.body;
+    console.log("AGE:", age, typeof age);
     const result = await userService.registerUser(req.body);
 
     res.status(201).json(result);

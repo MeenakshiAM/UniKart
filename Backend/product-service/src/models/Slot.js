@@ -101,22 +101,26 @@ slotSchema.index({ date: 1, "timeSlots.status": 1 });
 
 // ================= SAFE SLOT BOOKING =================
 
-slotSchema.statics.bookTimeSlot = async function (slotId, timeSlotId, bookingId) {
+slotSchema.statics.bookTimeSlot = async function (
+  slotId,
+  timeSlotId,
+  bookingId,
+  participants = 1
+) {
 
   const slot = await this.findOneAndUpdate(
     {
       _id: slotId,
-      "timeSlots._id": timeSlotId,
-      "timeSlots.status": "available",
-      $expr: {
-        $lt: [
-          "$timeSlots.$.capacity.booked",
-          "$timeSlots.$.capacity.max"
-        ]
+      timeSlots: {
+        $elemMatch: {
+          _id: timeSlotId,
+          status: "available",
+          "capacity.booked": { $lt: "$capacity.max" } // (we'll recheck after)
+        }
       }
     },
     {
-      $inc: { "timeSlots.$.capacity.booked": 1 },
+      $inc: { "timeSlots.$.capacity.booked": participants },
       $addToSet: { "timeSlots.$.bookingIds": bookingId }
     },
     { new: true }
@@ -128,6 +132,7 @@ slotSchema.statics.bookTimeSlot = async function (slotId, timeSlotId, bookingId)
 
   const timeSlot = slot.timeSlots.id(timeSlotId);
 
+  // 🔥 FINAL SAFE CHECK
   if (timeSlot.capacity.booked >= timeSlot.capacity.max) {
     timeSlot.status = "booked";
     await slot.save();
@@ -136,31 +141,46 @@ slotSchema.statics.bookTimeSlot = async function (slotId, timeSlotId, bookingId)
   return slot;
 };
 
-
 // ================= RELEASE SLOT =================
+slotSchema.statics.releaseTimeSlot = async function (
+  slotId,
+  timeSlotId,
+  bookingId,
+  participants = 1
+) {
 
-slotSchema.statics.releaseTimeSlot = async function (slotId, timeSlotId, bookingId) {
-
-  const slot = await this.findOneAndUpdate(
-    {
-      _id: slotId,
-      "timeSlots._id": timeSlotId
-    },
-    {
-      $inc: { "timeSlots.$.capacity.booked": -1 },
-      $pull: { "timeSlots.$.bookingIds": bookingId },
-      $set: { "timeSlots.$.status": "available" }
-    },
-    { new: true }
-  );
+  const slot = await this.findById(slotId);
 
   if (!slot) {
     throw new Error("Slot not found");
   }
 
+  const timeSlot = slot.timeSlots.id(timeSlotId);
+
+  if (!timeSlot) {
+    throw new Error("Time slot not found");
+  }
+
+  // 🔥 Prevent negative
+  timeSlot.capacity.booked = Math.max(
+    0,
+    timeSlot.capacity.booked - participants
+  );
+
+  // remove booking
+  timeSlot.bookingIds = timeSlot.bookingIds.filter(
+    id => id.toString() !== bookingId.toString()
+  );
+
+  // 🔥 Correct status logic
+  if (timeSlot.capacity.booked < timeSlot.capacity.max) {
+    timeSlot.status = "available";
+  }
+
+  await slot.save();
+
   return slot;
 };
-
 
 // ================= GET AVAILABLE SLOTS =================
 

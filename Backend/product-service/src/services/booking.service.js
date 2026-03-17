@@ -34,9 +34,9 @@ class BookingService {
         throw new Error('Time slot not found');
       }
 
-      if (timeSlot.capacity.booked + participants > timeSlot.capacity.max) {
-        throw new Error('Not enough capacity in this slot');
-      }
+      if (timeSlot.capacity.booked + participants > timeSlot.capacity.total) {
+  throw new Error('Not enough capacity in this slot');
+}
 
       const basePrice = service.pricing.basePrice;
 

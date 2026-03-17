@@ -504,7 +504,7 @@ class ServiceController {
 
       const service = await serviceService.suspendService(
         serviceId,
-        req.user.id,
+        req.user.userId,
         reason
       );
 
@@ -546,7 +546,34 @@ class ServiceController {
 
     }
   }
+  async updateSlot(req, res) {
+  try {
+    const { slotId } = req.params;
 
+    // 🔥 FIX HERE
+    const providerId = req.user.userId;
+
+    const updateData = req.body;
+
+    const updatedSlot = await serviceService.updateSlot(
+      slotId,
+      providerId,
+      updateData
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Slot updated successfully",
+      data: updatedSlot
+    });
+
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
 }
 
 module.exports = new ServiceController();
