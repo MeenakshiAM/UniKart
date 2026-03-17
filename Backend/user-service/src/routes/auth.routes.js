@@ -9,7 +9,8 @@ const {
   testAuth,
   uploadProfileImage,
   verifyEmail,
-  approveSeller
+  approveSeller,
+  getUserById
 } = require("../controllers/auth.controller");
 
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -44,7 +45,10 @@ router.get(
   testAuth
 );
 
-
+router.get("/users/:id", (req, res) => {
+  console.log("🚀 GET /users/:id called with ID:", req.params.id);
+  getUserById(req, res);
+});
 // BUYER → SELLER
 router.post(
   "/register-seller",
