@@ -2,104 +2,188 @@ const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const Slot = require('../models/Slot');
 const mongoose = require('mongoose');
+const axios = require("axios"); // for calling User Service
 
 class BookingService {
 
   // ================= BOOKING CREATION =================
+async createBooking(bookingData) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  async createBooking(bookingData) {
+  try {
+    const { serviceId, slotId, timeSlotId, participants = 1, userId, specialRequests } = bookingData;
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // 1️⃣ Fetch service
+    const service = await Service.findById(serviceId).session(session);
+    if (!service || service.status?.toLowerCase() !== "active") {
+      throw new Error("Service not available");
+    }
 
-    try {
-
-      const { serviceId, slotId, timeSlotId, participants = 1, userId } = bookingData;
-
-      const service = await Service.findById(serviceId).session(session);
-
-      if (!service || service.status !== 'active') {
-        throw new Error('Service not available');
-      }
-
-      const slot = await Slot.findById(slotId).session(session);
-
-      if (!slot) {
-        throw new Error('Slot not found');
-      }
-
-      const timeSlot = slot.timeSlots.id(timeSlotId);
-
-      if (!timeSlot) {
-        throw new Error('Time slot not found');
-      }
-
-      if (timeSlot.capacity.booked + participants > timeSlot.capacity.total) {
-  throw new Error('Not enough capacity in this slot');
+    // 2️⃣ Fetch slot
+    const slot = await Slot.findById(slotId).session(session);
+    if (!slot || !slot.isActive) {
+    throw new Error("Slot not found or inactive");
 }
 
-      const basePrice = service.pricing.basePrice;
-
-      const serviceFee = this.calculateServiceFee(basePrice);
-      const taxes = this.calculateTaxes(basePrice);
-
-      const totalAmount = (basePrice + serviceFee + taxes) * participants;
-
-      const booking = new Booking({
-
-        userId,
-        serviceId,
-        slotId,
-        timeSlotId,
-
-        providerId: service.providerId,
-
-        bookingDate: slot.date,
-        startTime: timeSlot.startTime,
-        endTime: timeSlot.endTime,
-
-        participants,
-
-        pricing: {
-          basePrice,
-          serviceFee,
-          taxes,
-          totalAmount
-        },
-
-        paymentStatus: "pending",
-        status: "pending_payment"
-
-      });
-
-      await booking.save({ session });
-
-      await Slot.bookTimeSlot(
-        slotId,
-        timeSlotId,
-        booking._id,
-        participants,
-        session
-      );
-
-      await service.incrementBooking(session);
-
-      await session.commitTransaction();
-      session.endSession();
-
-      await this.sendBookingNotifications(booking);
-
-      return booking;
-
-    } catch (error) {
-
-      await session.abortTransaction();
-      session.endSession();
-
-      throw new Error(`Booking failed: ${error.message}`);
+    const timeSlot = slot.timeSlots.id(timeSlotId);
+    if (!timeSlot) {
+      throw new Error("Time slot not found");
     }
+
+    // 3️⃣ Check time slot availability and capacity
+    if (timeSlot.status !== "available") {
+      throw new Error("Time slot is not available");
+    }
+
+    const currentBooked = timeSlot.capacity.booked || 0;
+    const maxCapacity = timeSlot.capacity.max || 1;
+
+    if (currentBooked + participants > maxCapacity) {
+      throw new Error(
+        `Not enough capacity. Available: ${maxCapacity - currentBooked}, Requested: ${participants}`
+      );
+    }
+console.log("💡 BookingService trying to fetch userId:", userId);
+    // 4️⃣ Fetch user info from User Service using decoded userId
+    // 4️⃣ Fetch user info from User Service
+let user;
+
+try {
+  console.log(`💡 BookingService trying to fetch userId: ${userId}`);
+
+  const url = `${process.env.USER_SERVICE_URL || 'http://localhost:4001'}/api/auth/users/${userId}`;
+  console.log(`📞 Calling User Service at: ${url}`);
+
+  const response = await axios.get(url, {
+    timeout: 5000,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  console.log('📨 Response received from User Service:', response.status, response.data);
+
+  if (!response.data || !response.data.success) {
+    throw new Error("Invalid response from User Service");
   }
 
+  user = response.data.data || response.data.user;
+
+  if (!user) {
+    throw new Error("User not found in User Service");
+  }
+
+  console.log(`✅ User fetched successfully: ${user.name || user.username} (${user.email})`);
+
+} catch (err) {
+  console.error("❌ User Service Error:", err.message);
+
+  if (err.code === 'ECONNREFUSED') {
+    console.error("🚫 Could not connect to User Service (Connection refused)");
+    throw new Error("User Service is unavailable. Please try again later.");
+  }
+
+  if (err.response) {
+    console.error("📌 Response status:", err.response.status);
+    console.error("📌 Response data:", err.response.data);
+  }
+
+  throw new Error(`Failed to fetch user: ${err.message}`);
+}
+
+    if (!user.email) {
+      throw new Error("Invalid user data received from User Service");
+    }
+
+    // 5️⃣ Calculate pricing
+    const basePrice = service.pricing?.basePrice || 0;
+    const serviceFee = this.calculateServiceFee(basePrice);
+    const tax = this.calculateTaxes(basePrice);
+    const discount = 0;
+    const totalAmount = (basePrice + serviceFee + tax - discount) * participants;
+
+    // 6️⃣ Prepare post-booking details
+    let postBookingDetails = {};
+    if (service.serviceType === "online") {
+      postBookingDetails = {
+        meetingLink: service.postBookingDetails?.meetingLink || "",
+        instructions: service.postBookingDetails?.instructions || ""
+      };
+    } else if (service.serviceType === "offline" || service.serviceType === "venue") {
+      postBookingDetails = {
+        whatsappGroupLink: service.postBookingDetails?.whatsappGroupLink || "",
+        instructions: service.postBookingDetails?.instructions || ""
+      };
+    }
+
+    // 7️⃣ Create booking
+    const booking = new Booking({
+      serviceId,
+      slotId,
+      timeSlotId,
+      bookingDate: slot.date,
+      startTime: timeSlot.startTime,
+      endTime: timeSlot.endTime,
+
+      // ✅ Use decoded userId directly
+      userId: userId,
+      userName: user.name || user.username || "Unknown",
+      userEmail: user.email,
+      userPhone: user.phone || user.mobile || "",
+
+      providerId: service.providerId,
+      providerName: service.providerName || "Provider",
+
+      participants,
+      specialRequests: specialRequests || "",
+      pricing: { basePrice, serviceFee, tax, discount, totalAmount },
+      payment: { status: "pending", method: null, transactionId: null },
+      status: "pending",
+      postBookingDetailsRevealed: false,
+      revealedDetails: {
+        whatsappGroupLink: postBookingDetails.whatsappGroupLink || "",
+        meetingLink: postBookingDetails.meetingLink || "",
+        instructions: postBookingDetails.instructions || "",
+        revealedAt: null
+      },
+      review: { hasReviewed: false, reviewId: null }
+    });
+
+    // 8️⃣ Save booking
+    await booking.save({ session });
+
+    // 9️⃣ Update timeSlot booked count and status
+    timeSlot.capacity.booked = currentBooked + participants;
+    timeSlot.bookingIds.push(booking._id);
+    if (timeSlot.capacity.booked >= maxCapacity) {
+      timeSlot.status = "full"; // mark fully booked
+    }
+    await slot.save({ session });
+
+    // 🔟 Increment service bookings
+    service.totalBookings = (service.totalBookings || 0) + 1;
+    await service.save({ session });
+
+    // 1️⃣1️⃣ Commit transaction
+    await session.commitTransaction();
+    console.log("✅ Booking created successfully:", booking._id);
+
+    // 1️⃣2️⃣ Send notifications
+    this.sendBookingNotifications(booking).catch(err => {
+      console.error("❌ Notification failed:", err.message);
+    });
+
+    return booking;
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("❌ Booking transaction failed:", error.message);
+    throw new Error(`Booking failed: ${error.message}`);
+  } finally {
+    session.endSession();
+  }
+}
   // ================= PAYMENT SUCCESS =================
 
   async markBookingPaid(bookingId, paymentData) {

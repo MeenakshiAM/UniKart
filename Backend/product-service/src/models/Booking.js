@@ -59,7 +59,7 @@ const bookingSchema = new mongoose.Schema({
 
   userPhone: {
     type: String,
-    required: true
+    //required: true
   },
 
   // Provider Info
