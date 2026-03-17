@@ -1,7 +1,8 @@
 const Service = require('../models/Service');
 const Slot = require('../models/Slot');
-const { cloudinary } = require('../config/cloudinary');
+const cloudinary = require('../config/cloudinary');
 const moderationService = require('./moderation.service');
+const mongoose = require("mongoose");
 
 class ServiceService {
 
@@ -125,26 +126,27 @@ class ServiceService {
 
   async deleteService(serviceId, providerId) {
 
-    const service = await Service.findOne({
-      _id: serviceId,
-      providerId
-    });
+  const service = await Service.findOne({
+    _id: serviceId,
+    providerId
+  });
 
-    if (!service) {
-      throw new Error("Service not found or unauthorized");
-    }
-    service.status = "deleted"; // or "inactive"
-
-    await service.save();
-
-    for (const img of service.images) {
-      if (img.publicId) {
-        await cloudinary.uploader.destroy(img.publicId);
-      }
-    }
-
-    return { message: "Service deleted successfully" };
+  if (!service) {
+    throw new Error("Service not found or unauthorized");
   }
+
+  // 🔥 delete images from cloudinary
+  for (const img of service.images) {
+    if (img.publicId) {
+      await cloudinary.uploader.destroy(img.publicId);
+    }
+  }
+
+  // 🔥 HARD DELETE from DB
+  await Service.deleteOne({ _id: serviceId });
+
+  return { message: "Service deleted successfully" };
+}
 
   // ================= SERVICE LISTING =================
 
@@ -401,6 +403,53 @@ async rejectServiceService(serviceId, reason) {
   await service.save();
 
   return service;
+}
+async updateSlot(slotId, providerId, updateData) {
+
+  // 🔥 Validate ObjectId
+  if (!mongoose.Types.ObjectId.isValid(slotId)) {
+    throw new Error("Invalid slot ID");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(providerId)) {
+    throw new Error("Invalid provider ID");
+  }
+
+  const slot = await Slot.findOne({
+    _id: new mongoose.Types.ObjectId(slotId),
+    providerId: new mongoose.Types.ObjectId(providerId)
+  });
+
+  if (!slot) {
+    throw new Error("Slot not found or unauthorized");
+  }
+
+  // 🚫 Prevent editing if bookings exist
+  const hasBookings = slot.timeSlots.some(
+    ts => ts.capacity?.booked > 0
+  );
+
+  if (hasBookings) {
+    throw new Error("Cannot update slot with existing bookings");
+  }
+
+  // 🔧 Update fields safely
+  if (updateData.date) {
+    slot.date = new Date(updateData.date);
+  }
+
+  if (updateData.timeSlots) {
+    slot.timeSlots = updateData.timeSlots;
+  }
+
+  // optional future field
+  if (updateData.isActive !== undefined) {
+    slot.isActive = updateData.isActive;
+  }
+
+  await slot.save();
+
+  return slot;
 }
 }
 

@@ -91,7 +91,12 @@ router.post(
   roleMiddleware("SELLER"),
   serviceController.bulkCreateSlots
 );
-
+router.put(
+  "/slots/:slotId",
+  authMiddleware,
+  roleMiddleware("SELLER"),
+  serviceController.updateSlot
+);
 // Update slot
 router.put(
   "/slots/:slotId",
