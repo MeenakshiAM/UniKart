@@ -163,14 +163,15 @@ exports.loginUser = async ({ email, password }) => {
   if (!isMatch) throw new Error("Invalid email or password");
 
   const token = jwt.sign(
-    {
-      userId: user._id,
-      role: user.role,
-      isSeller: user.isSeller
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN }
-  );
+  {
+    userId: user._id,
+    role: user.role,
+    isSeller: user.isSeller,
+    email: user.email   // <--- add this
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN }
+);
 
   return {
     token,

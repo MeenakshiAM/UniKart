@@ -1,5 +1,5 @@
 const serviceService = require('../services/service.service');
-
+const mongoose = require("mongoose");
 class ServiceController {
 
   // ================= SERVICE CRUD =================
@@ -90,7 +90,7 @@ class ServiceController {
         });
       }
 
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
       const files = req.files || [];
 
       const service = await serviceService.updateService(
@@ -121,7 +121,7 @@ class ServiceController {
     try {
 
       const { serviceId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const result = await serviceService.deleteService(serviceId, providerId);
 
@@ -179,32 +179,46 @@ class ServiceController {
   }
 
 
-  async getMyServices(req, res) {
-    try {
+ async getMyServices(req, res) {
+  try {
+    const providerId = req.user.userId;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const statusFilter = req.query.status;
 
-      const providerId = req.user.id;
+    console.log("🔍 Get My Services Debug:");
+    console.log("  Provider ID:", providerId);
+    console.log("  Status filter:", statusFilter || "all");
 
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 20;
-
-      const result = await serviceService.listServices({ providerId }, page, limit);
-
-      return res.status(200).json({
-        success: true,
-        data: result.services,
-        pagination: result.pagination
-      });
-
-    } catch (error) {
-
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-
+    const filters = { providerId };
+    
+    if (statusFilter) {
+      filters.status = statusFilter;
     }
-  }
 
+    // ✅ USE serviceService.listServices() instead of Service.find()
+    const result = await serviceService.listServices(
+      filters,
+      page,
+      limit
+    );
+
+    console.log("  ✅ Found:", result.services.length, "services");
+
+    return res.status(200).json({
+      success: true,
+      data: result.services,
+      pagination: result.pagination
+    });
+
+  } catch (error) {
+    console.error("❌ Get My Services Error:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
 
   async searchNearbyServices(req, res) {
     try {
@@ -247,7 +261,7 @@ class ServiceController {
     try {
 
       const { serviceId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const slot = await serviceService.createSlot(serviceId, providerId, req.body);
 
@@ -272,7 +286,7 @@ class ServiceController {
     try {
 
       const { serviceId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const { slots } = req.body;
 
@@ -341,7 +355,7 @@ class ServiceController {
     try {
 
       const { slotId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const slot = await serviceService.updateSlot(slotId, providerId, req.body);
 
@@ -366,7 +380,7 @@ class ServiceController {
     try {
 
       const { slotId } = req.params;
-      const providerId = req.user.id;
+      const providerId = req.user.userId;
 
       const result = await serviceService.deleteSlot(slotId, providerId);
 

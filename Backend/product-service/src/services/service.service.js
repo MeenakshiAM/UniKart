@@ -8,35 +8,39 @@ class ServiceService {
   // ================= SERVICE CRUD =================
 
   async createServiceService(serviceData) {
-    try {
-      const { title, description, images, isDraft } = serviceData;
+  try {
+    const { title, description, images, isDraft } = serviceData;
 
-      // ---------- MODERATION CHECK ----------
-      const { isAllowed, reason } = await moderationService.moderateContent(
-        `${title} ${description}`
-      );
+    // ---------- MODERATION CHECK ----------
+    const { isAllowed, reason } = await moderationService.moderateContent(
+      `${title} ${description}`
+    );
 
-      // Determine status like products
-      let status;
-      if (isDraft === "true" || isDraft === true) {
-        status = "draft";
-      } else {
-        status = isAllowed ? "pending_approval" : "rejected";
-      }
-
-      const service = await Service.create({
-        ...serviceData,
-        images,
-        status,
-        moderationReason: isAllowed ? null : reason
-      });
-
-      return service;
-    } catch (error) {
-      throw new Error(`Failed to create service: ${error.message}`);
+    // ---------- DETERMINE STATUS ----------
+    // Drafts stay as 'draft'
+    // Moderated content goes 'pending_approval' if allowed, 'rejected' if not
+    let status;
+    if (isDraft === "true" || isDraft === true) {
+      status = "draft";
+    } else {
+      status = isAllowed ? "pending_approval" : "rejected";
     }
-  }
 
+    // ---------- CREATE SERVICE ----------
+    const service = await Service.create({
+      ...serviceData,
+      images,
+      status,
+      moderationReason: isAllowed ? null : reason,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    return service;
+  } catch (error) {
+    throw new Error(`Failed to create service: ${error.message}`);
+  }
+}
 
   // ================= GET SERVICE =================
 
@@ -44,7 +48,7 @@ class ServiceService {
 
     const service = await Service.findById(serviceId);
 
-    if (!service || !service.isActive || service.status !== "active") {
+    if (!service || service.status !== "active") {
       throw new Error("Service not found");
     }
 
@@ -129,8 +133,7 @@ class ServiceService {
     if (!service) {
       throw new Error("Service not found or unauthorized");
     }
-
-    service.isActive = false;
+    service.status = "deleted"; // or "inactive"
 
     await service.save();
 
@@ -146,67 +149,73 @@ class ServiceService {
   // ================= SERVICE LISTING =================
 
   async listServices(filters = {}, page = 1, limit = 20) {
+  const {
+    category,
+    serviceType,
+    venue,
+    minPrice,
+    maxPrice,
+    searchQuery,
+    providerId,
+    status  // 🔥 Don't default to "active" anymore
+  } = filters;
 
-    const {
-      category,
-      serviceType,
-      venue,
-      minPrice,
-      maxPrice,
-      searchQuery,
-      providerId,
-      status = "active"
-    } = filters;
+  const query = {};
 
-    const query = {
-      isActive: true,
-      status
-    };
+if (status) {
+  query.status = status;
+}
 
-    if (category) query.category = category;
-    if (serviceType) query.serviceType = serviceType;
-    if (providerId) query.providerId = providerId;
+if (providerId) {
+  query.providerId = providerId;
+}
 
-    if (venue) {
-      query["location.venue"] = new RegExp(venue, "i");
-    }
 
-    if (minPrice || maxPrice) {
+  if (category) query.category = category;
+  if (serviceType) query.serviceType = serviceType;
+  if (providerId) query.providerId = providerId; // ← String comparison
 
-      query["pricing.basePrice"] = {};
-
-      if (minPrice) query["pricing.basePrice"].$gte = minPrice;
-      if (maxPrice) query["pricing.basePrice"].$lte = maxPrice;
-    }
-
-    if (searchQuery) {
-      query.$or = [
-        { title: new RegExp(searchQuery, "i") },
-        { description: new RegExp(searchQuery, "i") }
-      ];
-    }
-
-    const skip = (page - 1) * limit;
-
-    const services = await Service.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    const total = await Service.countDocuments(query);
-
-    return {
-      services,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    };
+  if (venue) {
+    query["location.venue"] = new RegExp(venue, "i");
   }
 
+  if (minPrice || maxPrice) {
+    query["pricing.basePrice"] = {};
+    if (minPrice) query["pricing.basePrice"].$gte = minPrice;
+    if (maxPrice) query["pricing.basePrice"].$lte = maxPrice;
+  }
+
+  if (searchQuery) {
+    query.$or = [
+      { title: new RegExp(searchQuery, "i") },
+      { description: new RegExp(searchQuery, "i") }
+    ];
+  }
+
+  console.log("🔎 Querying services with:", JSON.stringify(query, null, 2));
+
+  const skip = (page - 1) * limit;
+
+  const services = await Service.find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const total = await Service.countDocuments(query);
+
+  console.log("📊 Query results:", { found: services.length, total });
+
+  return {
+    services,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+}
   // ================= ADMIN =================
 
   async approveService(serviceId, adminId, adminName) {
@@ -218,6 +227,7 @@ class ServiceService {
     }
 
     service.status = "active";
+    //service.isActive=true;
 
     service.approvedBy = {
       adminId,
@@ -272,17 +282,16 @@ class ServiceService {
 
   async getServiceSlots(serviceId, startDate, endDate) {
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
 
-    const slots = await Slot.find({
-      serviceId,
-      date: { $gte: start, $lte: end },
-      isActive: true
-    }).sort({ date: 1 });
+  const slots = await Slot.find({
+    serviceId,
+    date: { $gte: start, $lte: end }
+  }).sort({ date: 1 });
 
-    return slots;
-  }
+  return slots;
+}
 
   async deleteSlot(slotId, providerId) {
 
@@ -339,7 +348,7 @@ class ServiceService {
     };
   }
   async getPendingServices(page = 1, limit = 20) {
-  const query = { status: "pending_approval", isActive: { $ne: false } };
+  const query = { status: "pending_approval" };
   const skip = (page - 1) * limit;
 
   const services = await Service.find(query)
@@ -371,6 +380,7 @@ async approveServiceService(serviceId) {
     throw new Error("Only pending services can be approved");
 
   service.status = "active";
+  
   await service.save();
 
   return service;
