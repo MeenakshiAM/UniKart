@@ -7,54 +7,36 @@ class ServiceService {
 
   // ================= SERVICE CRUD =================
 
-  async createService(serviceData, files = []) {
+  async createServiceService(serviceData) {
     try {
+      const { title, description, images, isDraft } = serviceData;
 
       // ---------- MODERATION CHECK ----------
-      const moderationResult = await moderationService.moderateContent(
-        `${serviceData.title} ${serviceData.description}`
+      const { isAllowed, reason } = await moderationService.moderateContent(
+        `${title} ${description}`
       );
 
-      if (!moderationResult.isAllowed) {
-        return {
-          status: "rejected",
-          reason: moderationResult.reason || "Content violates platform policy"
-        };
+      // Determine status like products
+      let status;
+      if (isDraft === "true" || isDraft === true) {
+        status = "draft";
+      } else {
+        status = isAllowed ? "pending_approval" : "rejected";
       }
 
-      // ---------- IMAGE UPLOAD ----------
-      const images = [];
-
-      if (files && files.length > 0) {
-        for (let i = 0; i < files.length; i++) {
-
-          const result = await cloudinary.uploader.upload(files[i].path, {
-            folder: "unikart/services",
-            resource_type: "auto"
-          });
-
-          images.push({
-            url: result.secure_url,
-            publicId: result.public_id,
-            isPrimary: i === 0
-          });
-        }
-      }
-
-      const service = new Service({
+      const service = await Service.create({
         ...serviceData,
         images,
-        status: "pending_approval"
+        status,
+        moderationReason: isAllowed ? null : reason
       });
 
-      await service.save();
-
       return service;
-
     } catch (error) {
       throw new Error(`Failed to create service: ${error.message}`);
     }
   }
+
 
   // ================= GET SERVICE =================
 
@@ -356,7 +338,60 @@ class ServiceService {
       totalViews
     };
   }
+  async getPendingServices(page = 1, limit = 20) {
+  const query = { status: "pending_approval", isActive: { $ne: false } };
+  const skip = (page - 1) * limit;
 
+  const services = await Service.find(query)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const total = await Service.countDocuments(query);
+
+  return {
+    services,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+}
+// Approve service
+async approveServiceService(serviceId) {
+  if (!serviceId) throw new Error("Service ID is required");
+
+  const service = await Service.findById(serviceId);
+  if (!service) throw new Error("Service not found");
+
+  if (service.status !== "pending_approval")
+    throw new Error("Only pending services can be approved");
+
+  service.status = "active";
+  await service.save();
+
+  return service;
+}
+
+// Reject service
+async rejectServiceService(serviceId, reason) {
+  if (!serviceId) throw new Error("Service ID is required");
+
+  const service = await Service.findById(serviceId);
+  if (!service) throw new Error("Service not found");
+
+  if (service.status !== "pending_approval")
+    throw new Error("Only pending services can be rejected");
+
+  service.status = "rejected";
+  service.moderationReason = reason || "Rejected by admin";
+  await service.save();
+
+  return service;
+}
 }
 
 module.exports = new ServiceService();
