@@ -61,24 +61,33 @@ const Hero = () => {
     }
   ];
 
-  const addToCart = (product, e) => {
-    e.stopPropagation();
-    if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItemIndex = cart.findIndex(item => item.id === product.id);
-      
-      if (existingItemIndex !== -1) {
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
-        alert(`${product.name} quantity increased!`);
-      } else {
-        cart.push({ ...product, quantity: 1 });
-        alert(`${product.name} added to cart!`);
-      }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
+const addToCart = (product, e) => {
+  e.stopPropagation();
+  
+  // Check if user is logged in
+  if (typeof window !== 'undefined') {
+    const authToken = localStorage.getItem('authToken');
+    
+    if (!authToken) {
+      alert('Please login to add items to cart!');
+      return;
     }
-  };
+    
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItemIndex = cart.findIndex(item => item.id === product.id);
+    
+    if (existingItemIndex !== -1) {
+      cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
+      alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+    } else {
+      cart.push({ ...product, quantity: 1 });
+      alert(`${product.name} added to cart!`);
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(cart));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
 
   const navigateToProduct = (productId) => {
     router.push(`/product/${productId}`);
