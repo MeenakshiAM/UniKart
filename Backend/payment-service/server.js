@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 
 const connectDB = require('./config/database');
 const paymentRoutes = require('./routes/paymentRoutes');
-const errorHandler = require('./middleware/errorHandler');
+const errorHandler = require('./middlewares/errorHandler');
 const { PORT } = require('./config/environment');
 
 const app = express();

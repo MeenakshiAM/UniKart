@@ -1,19 +1,31 @@
-const paymentService = require('../services/paymentService');
+const paymentService = require('../services/paymentServices');
 const Payment = require('../models/payment');
 
 class PaymentController {
   // Create payment order
+  // Create payment order
   async createOrder(req, res) {
     try {
-      const { orderId, amount, currency } = req.body;
-      const userId = req.user.id;
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📥 CREATE ORDER REQUEST');
+      console.log('Body:', JSON.stringify(req.body, null, 2));
+      
+      const { orderId, amount, currency, userId, type = 'order' } = req.body;
+      
+      const userIdToUse = userId || req.user?.id || 'test-user-123';
+      
+      console.log('Calling paymentService...');
 
       const orderData = await paymentService.createOrder({
         orderId,
-        userId,
+        userId: userIdToUse,
         amount,
-        currency
+        currency,
+        type
       });
+
+      console.log('✅ Success:', orderData);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       res.status(201).json({
         success: true,
@@ -24,13 +36,15 @@ class PaymentController {
         }
       });
     } catch (error) {
+      console.error('❌ ERROR:', error.message);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
       res.status(400).json({
         success: false,
         message: error.message
       });
     }
   }
-
   // Confirm payment
   async confirmPayment(req, res) {
     try {

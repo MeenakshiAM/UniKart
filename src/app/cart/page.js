@@ -6,9 +6,10 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RAZORPAY SCRIPT LOADER
-// ─────────────────────────────────────────────────────────────────────────────
+
+const TEST_USER_ID = '69b828af187f3e53daed9db1'; 
+
+
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     if (typeof window !== 'undefined' && window.Razorpay) return resolve(true);
@@ -21,9 +22,6 @@ const loadRazorpayScript = () => {
   });
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PAYMENT STATUS MODAL
-// ─────────────────────────────────────────────────────────────────────────────
 function PaymentModal({ status, message, onClose }) {
   if (!status) return null;
 
@@ -43,7 +41,7 @@ function PaymentModal({ status, message, onClose }) {
         {isSuccess && (
           <>
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Success! 🎉</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Successful! 🎉</h3>
             <p className="text-gray-500 mb-6">{message}</p>
             <button
               onClick={onClose}
@@ -56,13 +54,13 @@ function PaymentModal({ status, message, onClose }) {
         {status === 'error' && (
           <>
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Error</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Failed</h3>
             <p className="text-gray-500 mb-6">{message}</p>
             <button
               onClick={onClose}
               className="w-full py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors"
             >
-              Close
+              Try Again
             </button>
           </>
         )}
@@ -71,267 +69,121 @@ function PaymentModal({ status, message, onClose }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN CART COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 export default function Cart() {
   const [cartItems, setCartItems] = useState([]);
   const [paymentModal, setPaymentModal] = useState({ status: null, message: '' });
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const API_URL = 'http://localhost:4001/api';
-
-  // Get auth token and userId
-  const getAuthToken = () => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('authToken');
-  };
-
-  const getUserId = () => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('userId');
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // FETCH CART FROM BACKEND
-  // ─────────────────────────────────────────────────────────────────────────────
-  const fetchCart = async () => {
-    const token = getAuthToken();
-    const userId = getUserId();
-
-    if (!token || !userId) {
-      // User not logged in - use localStorage
-      const localCart = JSON.parse(localStorage.getItem('cart') || '[]');
-      setCartItems(localCart.map(item => ({ ...item, quantity: item.quantity || 1 })));
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/cart/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data.items) {
-        setCartItems(data.data.items);
-      } else {
-        setCartItems([]);
-      }
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      // Fallback to localStorage
-      const localCart = JSON.parse(localStorage.getItem('cart') || '[]');
-      setCartItems(localCart);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchCart();
+    if (typeof window !== 'undefined') {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const cartWithQuantity = cart.map(item => ({
+        ...item,
+        quantity: item.quantity || 1
+      }));
+      setCartItems(cartWithQuantity);
+    }
   }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // UPDATE QUANTITY (BACKEND + LOCALSTORAGE)
-  // ─────────────────────────────────────────────────────────────────────────────
-  const updateQuantity = async (index, delta) => {
-    const token = getAuthToken();
-    const userId = getUserId();
-    const item = cartItems[index];
-    const newQuantity = Math.max(1, (item.quantity || 1) + delta);
-
-    // Update UI immediately
-    const updatedCart = [...cartItems];
-    updatedCart[index].quantity = newQuantity;
-    setCartItems(updatedCart);
-
-    if (!token || !userId) {
-      // Update localStorage only
-      localStorage.setItem('cart', JSON.stringify(updatedCart));
+  const updateQuantity = (index, delta) => {
+    const newCart = [...cartItems];
+    newCart[index].quantity = Math.max(1, (newCart[index].quantity || 1) + delta);
+    setCartItems(newCart);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cart', JSON.stringify(newCart));
       window.dispatchEvent(new Event('storage'));
-      return;
-    }
-
-    try {
-      // Update backend
-      await fetch(`${API_URL}/cart/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId,
-          productId: item.productId || item.id,
-          quantity: newQuantity,
-          priceAtTime: item.price
-        })
-      });
-
-      // Also update localStorage for navbar badge
-      localStorage.setItem('cart', JSON.stringify(updatedCart));
-      window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-      console.error('Error updating quantity:', error);
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // REMOVE ITEM (BACKEND + LOCALSTORAGE)
-  // ─────────────────────────────────────────────────────────────────────────────
-  const removeItem = async (index) => {
-    const token = getAuthToken();
-    const userId = getUserId();
-    const item = cartItems[index];
-
-    // Update UI immediately
-    const updatedCart = cartItems.filter((_, i) => i !== index);
-    setCartItems(updatedCart);
-
-    if (!token || !userId) {
-      // Update localStorage only
-      localStorage.setItem('cart', JSON.stringify(updatedCart));
+  const removeItem = (index) => {
+    const newCart = cartItems.filter((_, i) => i !== index);
+    setCartItems(newCart);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cart', JSON.stringify(newCart));
       window.dispatchEvent(new Event('storage'));
-      return;
-    }
-
-    try {
-      // Remove from backend
-      await fetch(`${API_URL}/cart/remove`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId,
-          productId: item.productId || item.id
-        })
-      });
-
-      // Also update localStorage
-      localStorage.setItem('cart', JSON.stringify(updatedCart));
-      window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-      console.error('Error removing item:', error);
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CLEAR CART (BACKEND + LOCALSTORAGE)
-  // ─────────────────────────────────────────────────────────────────────────────
-  const clearCart = async () => {
-    const token = getAuthToken();
-    const userId = getUserId();
-
-    // Update UI immediately
+  const clearCart = () => {
     setCartItems([]);
-
-    if (!token || !userId) {
-      // Clear localStorage only
+    if (typeof window !== 'undefined') {
       localStorage.removeItem('cart');
       window.dispatchEvent(new Event('storage'));
-      return;
-    }
-
-    try {
-      // Clear backend cart
-      await fetch(`${API_URL}/cart/clear/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      // Also clear localStorage
-      localStorage.removeItem('cart');
-      window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-      console.error('Error clearing cart:', error);
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // CALCULATE TOTALS
-  // ─────────────────────────────────────────────────────────────────────────────
-  const subtotal = cartItems.reduce((sum, item) => {
-    const price = item.priceAtTime || item.price;
-    const quantity = item.quantity || 1;
-    return sum + (price * quantity);
-  }, 0);
-  
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
   const tax = subtotal * 0.05;
   const total = subtotal + tax;
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RAZORPAY PAYMENT INTEGRATION
-  // ─────────────────────────────────────────────────────────────────────────────
   const confirmPayment = async (paymentResponse) => {
-    const token = getAuthToken();
-
-    const response = await fetch(`${API_URL}/payments/confirm`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        razorpayOrderId: paymentResponse.razorpay_order_id,
-        razorpayPaymentId: paymentResponse.razorpay_payment_id,
-        razorpaySignature: paymentResponse.razorpay_signature
-      })
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      await clearCart();
-      setPaymentModal({ 
-        status: 'success', 
-        message: 'Your order has been placed successfully!' 
+    try {
+      console.log('Confirming payment...');
+      
+      const response = await fetch('http://localhost:4008/api/payments/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          razorpayOrderId: paymentResponse.razorpay_order_id,
+          razorpayPaymentId: paymentResponse.razorpay_payment_id,
+          razorpaySignature: paymentResponse.razorpay_signature
+        })
       });
-    } else {
-      throw new Error(data.message || 'Payment verification failed');
+
+      const data = await response.json();
+      console.log('Confirmation response:', data);
+
+      if (data.success) {
+        clearCart();
+        setPaymentModal({ 
+          status: 'success', 
+          message: 'Your order has been placed successfully!' 
+        });
+      } else {
+        throw new Error(data.message || 'Payment verification failed');
+      }
+    } catch (error) {
+      console.error('Confirmation error:', error);
+      throw error;
     }
   };
 
   const initiatePayment = async () => {
     if (cartItems.length === 0) return;
 
-    const token = getAuthToken();
-    if (!token) {
-      alert('Please sign in to continue with payment');
-      return;
-    }
-
     try {
       setIsCheckingOut(true);
       setPaymentModal({ status: 'loading', message: 'Creating your order...' });
+
+      console.log('Using TEST_USER_ID:', TEST_USER_ID);
 
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         throw new Error('Failed to load Razorpay. Check your internet connection.');
       }
 
-      const response = await fetch(`${API_URL}/payments/create-order`, {
+      const requestBody = {
+        orderId: 'order_' + Date.now(),
+        amount: Math.round(total),
+        currency: 'INR',
+        type: 'order',
+        userId: TEST_USER_ID  // ← Using hardcoded test user ID
+      };
+
+      console.log('Payment request:', requestBody);
+
+      const response = await fetch('http://localhost:4008/api/payments/create-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          orderId: 'order_' + Date.now(),
-          amount: Math.round(total),
-          currency: 'INR'
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
+      console.log('Payment response:', data);
 
       if (!data.success) {
         throw new Error(data.message || 'Failed to create order');
@@ -357,8 +209,8 @@ export default function Cart() {
         },
 
         prefill: {
-          name: localStorage.getItem('userName') || 'Customer',
-          email: 'customer@college.edu',
+          name: 'Test Student',
+          email: 'student@college.edu',
           contact: '9999999999'
         },
 
@@ -393,21 +245,6 @@ export default function Cart() {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -419,6 +256,17 @@ export default function Cart() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Testing Info Banner */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>🧪 Testing Mode:</strong> Using User ID: <code className="bg-blue-100 px-2 py-1 rounded">{TEST_USER_ID}</code>
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Change TEST_USER_ID at the top of page.js to use your own user ID from database
+          </p>
+        </div>
+
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
           {cartItems.length > 0 && (
@@ -445,23 +293,29 @@ export default function Cart() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
               {cartItems.map((item, index) => (
                 <div key={index} className="bg-white rounded-xl shadow-sm p-6 flex gap-4 hover:shadow-md transition-shadow">
                   
-                  <div className="w-24 h-24 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg overflow-hidden">
-                    {item.image ? (
+                  <div className="w-24 h-24 flex-shrink-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg overflow-hidden relative">
+                    {item.image && item.image.startsWith('http') ? (
                       <img
                         src={item.image}
-                        alt={item.name || 'Product'}
+                        alt={item.name}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
-                        No Image
+                      <div className="w-full h-full flex items-center justify-center text-4xl">
+                        {item.image || '📦'}
                       </div>
                     )}
+                    <div className="w-full h-full flex items-center justify-center text-4xl" style={{ display: 'none' }}>
+                      📦
+                    </div>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -490,6 +344,7 @@ export default function Cart() {
                       <button
                         onClick={() => removeItem(index)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Remove from cart"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -498,10 +353,10 @@ export default function Cart() {
 
                   <div className="text-right flex-shrink-0">
                     <div className="text-2xl font-bold text-indigo-600">
-                      ₹{((item.priceAtTime || item.price) * (item.quantity || 1)).toLocaleString()}
+                      ₹{(item.price * (item.quantity || 1)).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-500 mt-1">
-                      ₹{item.priceAtTime || item.price} each
+                      ₹{item.price} each
                     </div>
                   </div>
 
@@ -509,7 +364,6 @@ export default function Cart() {
               ))}
             </div>
 
-            {/* Order Summary */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
