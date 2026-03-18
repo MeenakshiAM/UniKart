@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Star, Heart, ShoppingCart, Filter, X } from "lucide-react";
+import { Star, Heart, ShoppingCart, Filter, X, Calendar } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
@@ -1553,18 +1553,38 @@ export default function Shop() {
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold text-indigo-600">₹{product.price}</span>
                         
-                        {/* Add to Cart Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent card click
-                            addToCart(product);
-                          }}
-                          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
-                          title="Add to cart"
-                        >
-                          <ShoppingCart className="w-4 h-4" />
-                          <span>Add</span>
-                        </button>
+                        {/* Add to Cart / Book Slot Button */}
+                        {product.category === 'services' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent card click
+                              // Check authentication first
+                              if (!isAuthenticated()) {
+                                setShowAuthModal(true);
+                                return;
+                              }
+                              // Navigate to product detail for booking
+                              router.push(`/product/${product.id}`);
+                            }}
+                            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                            title="Book a slot"
+                          >
+                            <Calendar className="w-4 h-4" />
+                            <span>Book Slot</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent card click
+                              addToCart(product);
+                            }}
+                            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                            title="Add to cart"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                            <span>Add</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -1585,12 +1585,19 @@ export default function ProductDetail() {
             </div>
 
             {/* Action Buttons */}
-            {requiresBooking(product) ? (
+            {product.category === 'services' ? (
               <div className="mb-8">
                 {!showBookingForm ? (
                   <button
-                    onClick={() => setShowBookingForm(true)}
-                    className="w-full py-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
+                    onClick={() => {
+                      // Check authentication first
+                      if (!isAuthenticated()) {
+                        setShowAuthModal(true);
+                        return;
+                      }
+                      setShowBookingForm(true);
+                    }}
+                    className="w-full py-4 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 shadow-lg"
                   >
                     <Calendar className="w-5 h-5" />
                     Book a Slot
@@ -1770,11 +1777,11 @@ export default function ProductDetail() {
 
             {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-              {requiresBooking(product) ? (
+              {product.category === 'services' ? (
                 <>
                   <div className="text-center">
                     <MapPin className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
-                    <p className="text-xs text-gray-600">Home Service</p>
+                    <p className="text-xs text-gray-600">Service Booking</p>
                   </div>
                   <div className="text-center">
                     <Shield className="w-8 h-8 text-indigo-600 mx-auto mb-2" />

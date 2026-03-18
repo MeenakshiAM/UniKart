@@ -452,13 +452,18 @@ export default function Wishlist() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            // Check authentication first
+                            if (!isAuthenticated()) {
+                              setShowAuthModal(true);
+                              return;
+                            }
                             navigateToProduct(item.id);
                           }}
                           disabled={!item.inStock}
                           className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                         >
                           <Calendar className="w-4 h-4" />
-                          {item.inStock ? "Book Now" : "Unavailable"}
+                          {item.inStock ? "Book Slot" : "Unavailable"}
                         </button>
                       ) : (
                         <button
