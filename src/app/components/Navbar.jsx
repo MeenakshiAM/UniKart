@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Heart, User, Menu, X } from 'lucide-react';
+import { loginUser, registerUser } from '../../api/authApi';
+import { clearAuthSession, saveAuthSession } from '../../utils/authStorage';
 
 const Navbar = () => {
   const router = useRouter();
@@ -44,59 +46,43 @@ const Navbar = () => {
   }, []);
 
   const handleSignOut = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userType');
+    clearAuthSession();
     setIsAuthenticated(false);
     setUserName('');
     setShowAccountMenu(false);
     router.push('/');
   };
 
-  const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    
-    if (isLogin) {
-      // Login Logic
-      if (email && password) {
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        const displayName = email.split('@')[0];
-        
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('userName', displayName);
-        localStorage.setItem('userType', 'buyer');
-        
+
+    try {
+      if (isLogin) {
+        const data = await loginUser({ email, password });
+        saveAuthSession({ token: data.token, user: data.user });
         setIsAuthenticated(true);
-        setUserName(displayName);
-        setShowAuthModal(false);
-        
-        // Reset form
-        setEmail('');
-        setPassword('');
+        setUserName(data.user?.name || "User");
       } else {
-        alert('Please enter email and password');
+        const registerNumber = `LBT26IT${Math.floor(Math.random() * 900 + 100)}`;
+        await registerUser({
+          name,
+          email,
+          password,
+          registerNumber,
+          dateOfBirth: "2003-01-01",
+          department: "IT",
+        });
+        alert("Registration successful. Please verify your email before login.");
       }
-    } else {
-      // Signup Logic
-      if (name && email && password) {
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('userName', name);
-        localStorage.setItem('userType', userType);
-        
-        setIsAuthenticated(true);
-        setUserName(name);
-        setShowAuthModal(false);
-        
-        // Reset form
-        setName('');
-        setEmail('');
-        setPassword('');
-        setUserType('buyer');
-      } else {
-        alert('Please fill all fields');
-      }
+
+      setShowAuthModal(false);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setUserType('buyer');
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      alert(error.message || "Authentication failed");
     }
   };
 

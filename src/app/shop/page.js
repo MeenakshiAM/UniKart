@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Star, Heart, ShoppingCart, Filter, X, Calendar } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { loginUser, registerUser } from "../../api/authApi";
+import { saveAuthSession } from "../../utils/authStorage";
 
 // COMPLETE PRODUCT DATA - Enhanced with your exact images
 const sampleProducts = [
@@ -1214,46 +1216,33 @@ export default function Shop() {
     return false;
   };
 
-  const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    
-    if (isLogin) {
-      // Login Logic
-      if (email && password) {
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        const displayName = email.split('@')[0];
-        
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('userName', displayName);
-        localStorage.setItem('userType', 'buyer');
-        
-        setShowAuthModal(false);
-        
-        // Reset form
-        setEmail('');
-        setPassword('');
+
+    try {
+      if (isLogin) {
+        const data = await loginUser({ email, password });
+        saveAuthSession({ token: data.token, user: data.user });
       } else {
-        alert('Please enter email and password');
+        const registerNumber = `LBT26IT${Math.floor(Math.random() * 900 + 100)}`;
+        await registerUser({
+          name,
+          email,
+          password,
+          registerNumber,
+          dateOfBirth: "2003-01-01",
+          department: "IT",
+        });
+        alert("Registration successful. Please verify your email before login.");
       }
-    } else {
-      // Signup Logic
-      if (name && email && password) {
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('userName', name);
-        localStorage.setItem('userType', userType);
-        
-        setShowAuthModal(false);
-        
-        // Reset form
-        setName('');
-        setEmail('');
-        setPassword('');
-        setUserType('buyer');
-      } else {
-        alert('Please fill all fields');
-      }
+      setShowAuthModal(false);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setUserType('buyer');
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      alert(error.message || "Authentication failed");
     }
   };
 

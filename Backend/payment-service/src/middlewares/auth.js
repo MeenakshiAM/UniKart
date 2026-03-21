@@ -13,7 +13,11 @@ const authenticateUser = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      id: decoded.id || decoded.userId,
+      userId: decoded.userId || decoded.id,
+    };
     next();
   } catch (error) {
     res.status(401).json({

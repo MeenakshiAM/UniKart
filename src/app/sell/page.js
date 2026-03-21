@@ -5,6 +5,8 @@ import { Upload, DollarSign, Package, TrendingUp, BarChart3, X } from "lucide-re
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { USER_SERVICE_URL } from "../../config/serviceUrls";
+import { loginUser, registerUser } from "../../api/authApi";
+import { saveAuthSession } from "../../utils/authStorage";
 
 export default function Sell() {
   const [activeTab, setActiveTab] = useState("getting-started");
@@ -25,46 +27,33 @@ export default function Sell() {
     return false;
   };
 
-  const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
-    
-    if (isLogin) {
-      // Login Logic
-      if (email && password) {
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        const displayName = email.split('@')[0];
-        
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('userName', displayName);
-        localStorage.setItem('userType', 'seller');
-        
-        setShowAuthModal(false);
-        
-        // Reset form
-        setEmail('');
-        setPassword('');
+
+    try {
+      if (isLogin) {
+        const data = await loginUser({ email, password });
+        saveAuthSession({ token: data.token, user: data.user });
       } else {
-        alert('Please enter email and password');
+        const registerNumber = `LBT26IT${Math.floor(Math.random() * 900 + 100)}`;
+        await registerUser({
+          name,
+          email,
+          password,
+          registerNumber,
+          dateOfBirth: "2003-01-01",
+          department: "IT",
+        });
+        alert("Registration successful. Please verify your email before login.");
       }
-    } else {
-      // Signup Logic
-      if (name && email && password) {
-        const mockToken = 'mock-jwt-token-' + Date.now();
-        
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('userName', name);
-        localStorage.setItem('userType', userType);
-        
-        setShowAuthModal(false);
-        
-        // Reset form
-        setName('');
-        setEmail('');
-        setPassword('');
-        setUserType('seller');
-      } else {
-        alert('Please fill all fields');
-      }
+      setShowAuthModal(false);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setUserType('seller');
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      alert(error.message || "Authentication failed");
     }
   };
 
