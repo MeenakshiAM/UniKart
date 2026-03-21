@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Upload, DollarSign, Package, TrendingUp, BarChart3, X } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { USER_SERVICE_URL } from "../../config/serviceUrls";
 
 export default function Sell() {
   const [activeTab, setActiveTab] = useState("getting-started");
@@ -67,13 +68,47 @@ export default function Sell() {
     }
   };
 
-  const handleCreateSellerAccount = () => {
+  const handleCreateSellerAccount = async () => {
     if (!isAuthenticated()) {
       setShowAuthModal(true);
       return;
     }
-    // In a real app, this would redirect to seller dashboard or profile setup
-    alert('Redirecting to seller account setup...');
+
+    // Check if user is already a seller
+    const userType = localStorage.getItem('userType');
+    if (userType === 'seller') {
+      alert('You are already registered as a seller!');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${USER_SERVICE_URL}/api/auth/register-seller`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          shopName: 'My Shop', // Default shop name, can be updated later
+          shopDescription: 'Welcome to my shop!',
+          agreedToCommission: true
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Seller registration submitted! Please wait for admin approval.');
+        // Update local storage
+        localStorage.setItem('userType', 'seller');
+      } else {
+        alert(data.message || 'Failed to register as seller');
+      }
+    } catch (error) {
+      console.error('Seller registration error:', error);
+      alert('Network error. Please try again.');
+    }
   };
 
   return (

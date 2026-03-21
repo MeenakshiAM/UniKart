@@ -1,5 +1,5 @@
 'use client';
-
+import { getWishlist, toggleWishlist } from "../../api/wishlistApi";
 import { useState, useEffect } from "react";
 import { Heart, ShoppingCart, Trash2, Calendar, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -132,6 +132,7 @@ const allProducts = [
 
 export default function Wishlist() {
   const router = useRouter();
+  const USER_ID = "69b828af187f3e53daed9db1";
   const [wishlist, setWishlist] = useState([]);
   const [wishlistProducts, setWishlistProducts] = useState([]);
 
@@ -143,27 +144,28 @@ export default function Wishlist() {
   const [name, setName] = useState('');
   const [userType, setUserType] = useState('buyer');
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      setWishlist(savedWishlist);
-      
-      // Get full product details for wishlist items
-      const products = allProducts.filter(p => savedWishlist.includes(p.id));
-      setWishlistProducts(products);
-    }
-  }, []);
+  const fetchWishlist = async () => {
+  const token = localStorage.getItem("authToken") || "";
+  if (!token) return;
+  const data = await getWishlist(token);
 
-  const removeFromWishlist = (productId) => {
-    const newWishlist = wishlist.filter(id => id !== productId);
-    setWishlist(newWishlist);
-    setWishlistProducts(wishlistProducts.filter(p => p.id !== productId));
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-      window.dispatchEvent(new Event('storage'));
-    }
-  };
+  const ids = data.map(item => item.productId);
+  setWishlist(ids);
+
+  const products = allProducts.filter(p => ids.includes(p.id));
+  setWishlistProducts(products);
+};
+
+useEffect(() => {
+  fetchWishlist();
+}, []);
+
+  const removeFromWishlist = async (productId) => {
+  const token = localStorage.getItem("authToken") || "";
+  if (!token) return;
+  await toggleWishlist(productId, token);
+  fetchWishlist();
+};
 
   // Authentication functions
   const isAuthenticated = () => {

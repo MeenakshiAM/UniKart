@@ -11,6 +11,7 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+app.use("/api/reports", reportRoutes);
 app.use("/reports", reportRoutes);
 
 module.exports = app;

@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import {
+  USER_SERVICE_URL,
+  PRODUCT_SERVICE_URL,
+  REPORT_SERVICE_URL,
+} from '../../config/serviceUrls';
 
 const AdminDashboard = () => {
   const router = useRouter();
@@ -55,29 +60,33 @@ const AdminDashboard = () => {
       const token = localStorage.getItem('authToken');
 
       // Fetch user stats
-      const userResponse = await fetch('http://localhost:4002/api/users/stats', {
+      const userResponse = await fetch(`${USER_SERVICE_URL}/api/auth/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const userStats = await userResponse.json();
+      const userPayload = await userResponse.json();
+      const users = userPayload.users || [];
+      const activeUsers = users.filter((u) => !u.isSuspended && !u.isBanned).length;
+      const suspendedUsers = users.filter((u) => !!u.isSuspended).length;
 
       // Fetch product stats
-      const productResponse = await fetch('http://localhost:4000/api/products/admin/stats', {
+      const productResponse = await fetch(`${PRODUCT_SERVICE_URL}/api/products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const productStats = await productResponse.json();
+      const productPayload = await productResponse.json();
 
       // Fetch report stats
-      const reportResponse = await fetch('http://localhost:4004/api/reports/admin/stats', {
+      const reportResponse = await fetch(`${REPORT_SERVICE_URL}/api/reports/admin/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const reportStats = await reportResponse.json();
+      const reportPayload = await reportResponse.json();
+      const reportStats = reportPayload.stats || {};
 
       setStats({
-        totalUsers: userStats.totalUsers || 0,
-        activeUsers: userStats.activeUsers || 0,
-        suspendedUsers: userStats.suspendedUsers || 0,
-        totalProducts: productStats.totalProducts || 0,
-        pendingReports: reportStats.pendingReports || 0,
+        totalUsers: users.length || 0,
+        activeUsers: activeUsers || 0,
+        suspendedUsers: suspendedUsers || 0,
+        totalProducts: productPayload.total || 0,
+        pendingReports: reportStats.pending || 0,
         totalOrders: 0 // Will be implemented when order service is available
       });
     } catch (error) {

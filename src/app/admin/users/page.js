@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import { USER_SERVICE_URL } from '../../../config/serviceUrls';
 
 const AdminUsers = () => {
   const router = useRouter();
@@ -55,7 +56,7 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:4002/api/users/admin/all', {
+      const response = await fetch(`${USER_SERVICE_URL}/api/auth/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -96,13 +97,13 @@ const AdminUsers = () => {
 
       switch (action) {
         case 'warn':
-          endpoint = `http://localhost:4002/api/users/warn/${userId}`;
+          endpoint = `${USER_SERVICE_URL}/api/users/warn/${userId}`;
           break;
         case 'suspend':
-          endpoint = `http://localhost:4002/api/users/suspend/${userId}`;
+          endpoint = `${USER_SERVICE_URL}/api/users/suspend/${userId}`;
           break;
         case 'ban':
-          endpoint = `http://localhost:4002/api/users/ban/${userId}`;
+          endpoint = `${USER_SERVICE_URL}/api/users/ban/${userId}`;
           break;
         default:
           return;

@@ -1,6 +1,7 @@
 'use client';
-
+import { getCart, removeFromCart, clearCart } from "../../api/cartApi";
 import { useState, useEffect } from "react";
+import { PAYMENT_SERVICE_URL } from "../../config/serviceUrls";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, CheckCircle, AlertCircle, Loader2, CreditCard, Shield, Truck } from "lucide-react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
@@ -8,7 +9,6 @@ import Footer from "../components/Footer";
 
 
 const TEST_USER_ID = '69b828af187f3e53daed9db1'; 
-
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -70,49 +70,53 @@ function PaymentModal({ status, message, onClose }) {
 }
 
 export default function Cart() {
+  const [token, setToken] = useState("");
   const [cartItems, setCartItems] = useState([]);
   const [paymentModal, setPaymentModal] = useState({ status: null, message: '' });
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const cartWithQuantity = cart.map(item => ({
-        ...item,
-        quantity: item.quantity || 1
-      }));
-      setCartItems(cartWithQuantity);
-    }
-  }, []);
+  const fetchCart = async () => {
+  try {
+    const data = await getCart(token);
+    setCartItems(data.items || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+useEffect(() => {
+  const savedToken = localStorage.getItem("authToken") || "";
+  setToken(savedToken);
+}, []);
+
+useEffect(() => {
+  if (token) fetchCart();
+}, [token]);
 
   const updateQuantity = (index, delta) => {
     const newCart = [...cartItems];
     newCart[index].quantity = Math.max(1, (newCart[index].quantity || 1) + delta);
     setCartItems(newCart);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      window.dispatchEvent(new Event('storage'));
-    }
   };
 
-  const removeItem = (index) => {
-    const newCart = cartItems.filter((_, i) => i !== index);
-    setCartItems(newCart);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cart', JSON.stringify(newCart));
-      window.dispatchEvent(new Event('storage'));
-    }
-  };
+  const removeItem = async (productId) => {
+  try {
+    await removeFromCart(productId, token);
+    fetchCart();
+  } catch (err) {
+    console.error(err);
+  }
+};
 
-  const clearCart = () => {
-    setCartItems([]);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('cart');
-      window.dispatchEvent(new Event('storage'));
-    }
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+ const handleClearCart = async () => {
+  try {
+    await clearCart(token);
+    fetchCart();
+  } catch (err) {
+    console.error(err);
+  }
+};
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.priceAtTime * (item.quantity || 1)), 0);
   const tax = subtotal * 0.05;
   const total = subtotal + tax;
 
@@ -120,7 +124,7 @@ export default function Cart() {
     try {
       console.log('Confirming payment...');
       
-      const response = await fetch('http://localhost:4008/api/payments/confirm', {
+      const response = await fetch(`${PAYMENT_SERVICE_URL}/api/payments/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +178,7 @@ export default function Cart() {
 
       console.log('Payment request:', requestBody);
 
-      const response = await fetch('http://localhost:4008/api/payments/create-order', {
+      const response = await fetch(`${PAYMENT_SERVICE_URL}/api/payments/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +275,7 @@ export default function Cart() {
           <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
           {cartItems.length > 0 && (
             <button 
-              onClick={clearCart}
+              onClick={handleClearCart}
               className="text-red-600 hover:text-red-700 font-medium text-sm"
             >
               Clear Cart
@@ -342,7 +346,7 @@ export default function Cart() {
                       </div>
 
                       <button
-                        onClick={() => removeItem(index)}
+                        onClick={() => removeItem(item.productId)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Remove from cart"
                       >
@@ -353,10 +357,10 @@ export default function Cart() {
 
                   <div className="text-right flex-shrink-0">
                     <div className="text-2xl font-bold text-indigo-600">
-                      ₹{(item.price * (item.quantity || 1)).toLocaleString()}
+                      ₹{(item.priceAtTime * (item.quantity || 1)).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-500 mt-1">
-                      ₹{item.price} each
+                      ₹{item.priceAtTime} each
                     </div>
                   </div>
 
