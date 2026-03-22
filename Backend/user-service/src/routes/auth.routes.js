@@ -10,7 +10,8 @@ const {
   uploadProfileImage,
   verifyEmail,
   approveSeller,
-  getUserById
+  getUserById,
+  resendVerificationEmail
 } = require("../controllers/auth.controller");
 
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -46,7 +47,7 @@ router.get(
 );
 
 router.get("/users/:id", (req, res) => {
-  console.log("🚀 GET /users/:id called with ID:", req.params.id);
+  console.log(" GET /users/:id called with ID:", req.params.id);
   getUserById(req, res);
 });
 // BUYER → SELLER
@@ -56,7 +57,7 @@ router.post(
   roleMiddleware("BUYER"),
   registerSeller
 );
-
+router.post("/resend-verification", resendVerificationEmail);
 
 // PROFILE IMAGE
 router.patch(

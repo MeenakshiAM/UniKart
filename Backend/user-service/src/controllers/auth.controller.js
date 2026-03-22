@@ -2,7 +2,6 @@ const userService = require("../services/user.service");
 const User = require("../models/user.model"); // make sure path is correct
 
 // ---------- REGISTER USER ----------
-// ---------- REGISTER USER ----------
 exports.registerUser = async (req, res) => {
   try {
     const { age } = req.body;
@@ -190,7 +189,24 @@ exports.approveSeller = async (req, res) => {
 
   }
 };
-// ================= GET USER BY ID =================
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    const result = await userService.resendVerificationEmail(email);
+
+    res.status(200).json(result);
+
+  } catch (error) {
+
+    res.status(400).json({
+      message: error.message
+    });
+
+  }
+};
+
 // ================= GET USER BY ID =================
 exports.getUserById = async (req, res) => {
   try {

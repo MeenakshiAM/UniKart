@@ -248,3 +248,24 @@ exports.approveSeller = async (sellerId) => {
 
   return updatedSeller;
 };
+exports.resendVerificationEmail = async (email) => {
+
+  const user = await userRepo.findUserByEmail(email);
+
+  if (!user) throw new Error("User not found");
+
+  if (user.emailVerified) {
+    throw new Error("Email already verified");
+  }
+
+  const newToken = crypto.randomBytes(32).toString("hex");
+
+  await userRepo.updateUserById(user._id, {
+    emailVerificationToken: newToken,
+    emailVerificationExpires: Date.now() + 3600000
+  });
+
+  await sendVerificationEmail(user.email, newToken);
+
+  return { message: "Verification email resent" };
+};
