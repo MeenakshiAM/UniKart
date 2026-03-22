@@ -24,8 +24,23 @@ const moderateText = async (text) => {
   }
 };
 
-exports.createProductService = async (productData, sellerId) => {
+const moderateImages = async (images = []) => {
+  if (!images.length) return { isAllowed: true, results: [] };
 
+  try {
+    const response = await axios.post(
+      "http://localhost:4003/api/moderation/images",
+      { images } // expects array of URLs or local paths handled by Moderation Service
+    );
+    // response: { isAllowed, results: [...] }
+    return response.data;
+  } catch (err) {
+    console.error("Image moderation failed:", err.message);
+    throw new Error(`Image moderation failed: ${err.message}`);
+  }
+};
+
+exports.createProductService = async (productData, sellerId) => {
   const {
     title,
     description,
@@ -37,53 +52,43 @@ exports.createProductService = async (productData, sellerId) => {
   } = productData;
 
   const basePrice = Number(productData.basePrice || productData?.price?.basePrice);
-
-  const quantity = productData.quantity
-    ? Number(productData.quantity)
-    : 0;
+  const quantity = productData.quantity ? Number(productData.quantity) : 0;
 
   if (isNaN(basePrice) || basePrice <= 0) {
     throw new Error("Valid base price is required");
   }
 
-  const { isAllowed, reason } = await moderateText(`${title} ${description}`);
+  // 1️⃣ Text moderation
+  const { isAllowed: textAllowed, reason: textReason } = await moderateText(`${title} ${description}`);
 
-  
+  // 2️⃣ Image moderation
+  const { isAllowed: imagesAllowed, results: imageResults } = await moderateImages(images);
+
+  const finalAllowed = textAllowed && imagesAllowed;
+  const moderationReason = finalAllowed ? null : `Text: ${textReason}; Images: ${imageResults.filter(r => !r.isAllowed).map(r => r.imageUrl).join(", ")}`;
+
+  // 3️⃣ Determine status
   let status;
-if (isDraft === "true" || isDraft === true) {
-  status = "DRAFT";
-} else {
-  status = "PENDING_APPROVAL"; // new default
-}
+  if (isDraft === "true" || isDraft === true) status = "DRAFT";
+  else status = "PENDING_APPROVAL";
 
+  // 4️⃣ Price calculation
   const commissionPercent = 10;
-
   const finalPrice = basePrice + (basePrice * commissionPercent) / 100;
 
+  // 5️⃣ Create product
   const product = await Product.create({
-
     title,
     description,
     type,
     category,
     subCategory,
-
-    price: {
-      basePrice,
-      commissionPercent,
-      finalPrice
-    },
-
+    price: { basePrice, commissionPercent, finalPrice },
     quantity: type === "PRODUCT" ? quantity : undefined,
-
     images,
-
     sellerId,
-
     status,
-
-    moderationReason: isAllowed ? null : reason
-
+    moderationReason,
   });
 
   return { product };
