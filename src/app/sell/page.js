@@ -1,15 +1,186 @@
 'use client';
 
 import { useState } from "react";
-import { Upload, DollarSign, Package, TrendingUp, BarChart3 } from "lucide-react";
+import { Upload, DollarSign, Package, TrendingUp, BarChart3, X } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 export default function Sell() {
   const [activeTab, setActiveTab] = useState("getting-started");
 
+  // Authentication state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [userType, setUserType] = useState('seller');
+
+  // Authentication functions
+  const isAuthenticated = () => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('authToken') !== null;
+    }
+    return false;
+  };
+
+  const handleAuthSubmit = (e) => {
+    e.preventDefault();
+    
+    if (isLogin) {
+      // Login Logic
+      if (email && password) {
+        const mockToken = 'mock-jwt-token-' + Date.now();
+        const displayName = email.split('@')[0];
+        
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('userName', displayName);
+        localStorage.setItem('userType', 'seller');
+        
+        setShowAuthModal(false);
+        
+        // Reset form
+        setEmail('');
+        setPassword('');
+      } else {
+        alert('Please enter email and password');
+      }
+    } else {
+      // Signup Logic
+      if (name && email && password) {
+        const mockToken = 'mock-jwt-token-' + Date.now();
+        
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('userName', name);
+        localStorage.setItem('userType', userType);
+        
+        setShowAuthModal(false);
+        
+        // Reset form
+        setName('');
+        setEmail('');
+        setPassword('');
+        setUserType('seller');
+      } else {
+        alert('Please fill all fields');
+      }
+    }
+  };
+
+  const handleCreateSellerAccount = () => {
+    if (!isAuthenticated()) {
+      setShowAuthModal(true);
+      return;
+    }
+    // In a real app, this would redirect to seller dashboard or profile setup
+    alert('Redirecting to seller account setup...');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      
+      {/* Authentication Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {isLogin ? 'Sign In' : 'Create Account'}
+                </h3>
+                <button
+                  onClick={() => setShowAuthModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="Enter your password"
+                  />
+                </div>
+
+                {!isLogin && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">I want to</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="buyer"
+                          checked={userType === 'buyer'}
+                          onChange={(e) => setUserType(e.target.value)}
+                          className="mr-2"
+                        />
+                        Buy products
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="seller"
+                          checked={userType === 'seller'}
+                          onChange={(e) => setUserType(e.target.value)}
+                          className="mr-2"
+                        />
+                        Sell products
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  {isLogin ? 'Sign In' : 'Create Account'}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                >
+                  {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Navbar />
 
       {/* Hero Section */}
@@ -20,7 +191,7 @@ export default function Sell() {
             <p className="text-xl text-indigo-100 mb-8">
               Turn your passion into profit. Join hundreds of student entrepreneurs.
             </p>
-            <button className="px-8 py-4 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg text-lg">
+            <button className="px-8 py-4 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg text-lg" onClick={handleCreateSellerAccount}>
               Create Seller Account
             </button>
           </div>
@@ -86,7 +257,7 @@ export default function Sell() {
             <div className="mt-12 bg-indigo-50 rounded-xl p-8 text-center">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Get Started?</h3>
               <p className="text-gray-600 mb-6">Join our community of student entrepreneurs today</p>
-              <button className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+              <button className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors" onClick={handleCreateSellerAccount}>
                 Create Seller Account
               </button>
             </div>

@@ -61,24 +61,33 @@ const Hero = () => {
     }
   ];
 
-  const addToCart = (product, e) => {
-    e.stopPropagation();
-    if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItemIndex = cart.findIndex(item => item.id === product.id);
-      
-      if (existingItemIndex !== -1) {
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
-        alert(`${product.name} quantity increased!`);
-      } else {
-        cart.push({ ...product, quantity: 1 });
-        alert(`${product.name} added to cart!`);
-      }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
+const addToCart = (product, e) => {
+  e.stopPropagation();
+  
+  // Check if user is logged in
+  if (typeof window !== 'undefined') {
+    const authToken = localStorage.getItem('authToken');
+    
+    if (!authToken) {
+      alert('Please login to add items to cart!');
+      return;
     }
-  };
+    
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItemIndex = cart.findIndex(item => item.id === product.id);
+    
+    if (existingItemIndex !== -1) {
+      cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
+      alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+    } else {
+      cart.push({ ...product, quantity: 1 });
+      alert(`${product.name} added to cart!`);
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(cart));
+    window.dispatchEvent(new Event('storage'));
+  }
+};
 
   const navigateToProduct = (productId) => {
     router.push(`/product/${productId}`);
@@ -110,11 +119,12 @@ const Hero = () => {
         <form onSubmit={handleSearch} className="max-w-3xl mx-auto mb-12">
           <div className="relative">
             <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for cakes, tutoring, crafts, and more..."
-              className="w-full px-6 py-4 pr-14 rounded-full text-gray-900 text-lg shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50"
+               type="text"
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               placeholder="Search for cakes, tutoring, crafts, and more..."
+               className="w-full px-6 py-4 pr-14 rounded-full bg-white text-gray-900 text-lg shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50 placeholder-gray-500"
+               style={{ backgroundColor: 'white', color: '#111827' }}
             />
             <button
               type="submit"
