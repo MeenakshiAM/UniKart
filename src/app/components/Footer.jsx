@@ -111,9 +111,9 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <a href="#privacy" className="hover:text-white transition-colors">
+                <Link href="/privacy" className="hover:text-white transition-colors">
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="mailto:contact@unikart.com" className="hover:text-white transition-colors">
@@ -132,9 +132,9 @@ const Footer = () => {
               Terms
             </Link>
             <span>•</span>
-            <a href="#privacy" className="hover:text-white transition-colors">
+            <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy
-            </a>
+            </Link>
             <span>•</span>
             <a href="mailto:support@unikart.com" className="hover:text-white transition-colors">
               Support
