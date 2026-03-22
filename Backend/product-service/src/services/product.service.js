@@ -1,8 +1,6 @@
 const axios = require("axios");
 const Product = require("../models/Product");
 const mongoose = require("mongoose");
-const MODERATION_SERVICE_URL =
-  process.env.MODERATION_SERVICE_URL || "http://localhost:4003";
 
 // ----helper ..........
 const validateObjectId = (id, label = "ID") => {
@@ -15,7 +13,7 @@ const validateObjectId = (id, label = "ID") => {
 const moderateText = async (text) => {
   try {
     const response = await axios.post(
-      `${MODERATION_SERVICE_URL}/api/moderation/analyze`,
+      "http://localhost:4003/api/moderation/analyze",
       { text }
     );
     return response.data; // { isAllowed, reason }

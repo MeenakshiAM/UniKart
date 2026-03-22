@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { REPORT_SERVICE_URL } from '../../../config/serviceUrls';
 
 const AdminReports = () => {
   const router = useRouter();
@@ -55,7 +54,7 @@ const AdminReports = () => {
   const fetchReports = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${REPORT_SERVICE_URL}/api/reports/admin`, {
+      const response = await fetch('http://localhost:4004/api/reports/admin', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -97,13 +96,13 @@ const AdminReports = () => {
 
       switch (action) {
         case 'under-review':
-          endpoint = `${REPORT_SERVICE_URL}/api/reports/admin/${reportId}/under-review`;
+          endpoint = `http://localhost:4004/api/reports/admin/${reportId}/under-review`;
           break;
         case 'resolve':
-          endpoint = `${REPORT_SERVICE_URL}/api/reports/admin/${reportId}/resolve`;
+          endpoint = `http://localhost:4004/api/reports/admin/${reportId}/resolve`;
           break;
         case 'reject':
-          endpoint = `${REPORT_SERVICE_URL}/api/reports/admin/${reportId}/reject`;
+          endpoint = `http://localhost:4004/api/reports/admin/${reportId}/reject`;
           break;
         default:
           return;

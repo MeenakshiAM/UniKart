@@ -11,14 +11,6 @@ const moderationLogSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    decision: {
-      type: String,
-      default: "APPROVED",
-    },
-    reason: {
-      type: String,
-      default: "",
-    },
 
     isAllowed: {
       type: Boolean,

@@ -11,7 +11,6 @@ const wishlistSchema = new mongoose.Schema(
       required: true,
     },
   },
-
   { timestamps: true }
 );
 

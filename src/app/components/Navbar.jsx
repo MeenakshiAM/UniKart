@@ -175,31 +175,25 @@ const Navbar = () => {
                   </button>
 
                   {showAccountMenu && (
-  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2">
-    <button 
-      onClick={() => router.push('/seller')}
-      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
-    >
-      Seller Dashboard
-    </button>
-    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
-      Profile
-    </button>
-    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
-      My Orders
-    </button>
-    <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
-      Settings
-    </button>
-    <hr className="my-2" />
-    <button
-      onClick={handleSignOut}
-      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 font-medium"
-    >
-      Sign Out
-    </button>
-  </div>
-)}
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2">
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
+                        Profile
+                      </button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
+                        My Orders
+                      </button>
+                      <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
+                        Settings
+                      </button>
+                      <hr className="my-2" />
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 font-medium"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button

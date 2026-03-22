@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { PRODUCT_SERVICE_URL } from '../../../config/serviceUrls';
 
 const AdminProducts = () => {
   const router = useRouter();
@@ -56,7 +55,7 @@ const AdminProducts = () => {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${PRODUCT_SERVICE_URL}/api/products`, {
+      const response = await fetch('http://localhost:4000/api/products/admin/all', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -103,13 +102,13 @@ const AdminProducts = () => {
 
       switch (action) {
         case 'approve':
-          endpoint = `${PRODUCT_SERVICE_URL}/api/products/approve/${productId}`;
+          endpoint = `http://localhost:4000/api/products/${productId}/approve`;
           break;
         case 'reject':
-          endpoint = `${PRODUCT_SERVICE_URL}/api/products/reject/${productId}`;
+          endpoint = `http://localhost:4000/api/products/${productId}/reject`;
           break;
         case 'hide':
-          endpoint = `${PRODUCT_SERVICE_URL}/api/products/${productId}/admin-hide`;
+          endpoint = `http://localhost:4000/api/products/${productId}/admin-hide`;
           break;
         default:
           return;

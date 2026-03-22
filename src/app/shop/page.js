@@ -1594,6 +1594,7 @@ export default function Shop() {
           </div>
         </div>
       </div>
+
       <Footer />
     </div>
   );

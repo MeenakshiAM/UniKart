@@ -14,12 +14,12 @@ const authMiddleware = require("../middlewares/auth.middleware");
 router.post("/add",authMiddleware, addToCart);
 
 // Get user cart
-router.get("/", authMiddleware, getCart);
+router.get("/:userId", authMiddleware, getCart);
 
 // Remove item from cart
 router.delete("/remove", authMiddleware, removeFromCart);
 
 // Clear entire cart
-router.delete("/clear", authMiddleware, clearCart);
+router.delete("/clear/:userId", authMiddleware, clearCart);
 
 module.exports = router;

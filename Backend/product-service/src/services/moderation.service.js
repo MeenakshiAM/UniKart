@@ -1,6 +1,4 @@
 const axios = require("axios");
-const MODERATION_SERVICE_URL =
-  process.env.MODERATION_SERVICE_URL || "http://localhost:4003";
 
 class ModerationService {
 
@@ -9,7 +7,7 @@ class ModerationService {
     try {
 
       const response = await axios.post(
-        `${MODERATION_SERVICE_URL}/api/moderation/analyze`,
+        "http://localhost:4003/api/moderation/analyze",
         { text }
       );
 

@@ -9,12 +9,12 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT ;
 
 // Import configurations and routes
 const connectDB = require('./config/database');
 const paymentRoutes = require('./routes/paymentRoutes');
 const errorHandler = require('./middlewares/errorHandler');
-const { PORT } = require('./config/environment');
 
 // Connect to MongoDB
 connectDB();

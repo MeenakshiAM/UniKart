@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import { MODERATION_SERVICE_URL } from '../../../config/serviceUrls';
 
 const AdminModeration = () => {
   const router = useRouter();
@@ -55,7 +54,7 @@ const AdminModeration = () => {
   const fetchModerationLogs = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${MODERATION_SERVICE_URL}/api/moderation/logs`, {
+      const response = await fetch('http://localhost:4003/api/moderation/logs', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -98,7 +97,7 @@ const AdminModeration = () => {
     setTesting(true);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${MODERATION_SERVICE_URL}/api/moderation/analyze`, {
+      const response = await fetch('http://localhost:4003/api/moderation/analyze', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

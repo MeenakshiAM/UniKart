@@ -9,9 +9,9 @@ const {
 const authMiddleware = require("../middlewares/auth.middleware");
 
 // Add or remove from wishlist (toggle)
-router.post("/toggle", authMiddleware, toggleWishlist);
+router.post("/toggle", toggleWishlist);
 
 // Get wishlist
-router.get("/", authMiddleware, getWishlist);
+router.get("/:userId", getWishlist);
 
 module.exports = router;
