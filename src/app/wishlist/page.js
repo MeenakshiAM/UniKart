@@ -230,7 +230,7 @@ export default function Wishlist() {
       const existingItemIndex = cart.findIndex(item => item.id === product.id);
       
       if (existingItemIndex !== -1) {
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
+        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 0) + 1;
         alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
       } else {
         cart.push({ ...product, quantity: 1 });
