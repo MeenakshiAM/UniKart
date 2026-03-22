@@ -4,7 +4,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendVerificationEmail = require("../utils/sendEmail");
-
+const SellerProfile = require("../models/sellerProfile.model");
+const mongoose = require("mongoose");
 
 // -------- Validation Functions --------
 function isValidRegisterNumber(registerNumber) {
@@ -247,4 +248,38 @@ exports.approveSeller = async (sellerId) => {
   });
 
   return updatedSeller;
+};
+exports.getSellerByUserId = async (userId) => {
+
+  const seller = await SellerProfile.findOne({ userId });
+
+  return seller;
+};
+exports.getSellerByUserIds = async (userId) => {
+
+  return await SellerProfile.findOne({
+    userId: new mongoose.Types.ObjectId(userId)
+  });
+
+};
+exports.resendVerificationEmail = async (email) => {
+
+  const user = await userRepo.findUserByEmail(email);
+
+  if (!user) throw new Error("User not found");
+
+  if (user.emailVerified) {
+    throw new Error("Email already verified");
+  }
+
+  const newToken = crypto.randomBytes(32).toString("hex");
+
+  await userRepo.updateUserById(user._id, {
+    emailVerificationToken: newToken,
+    emailVerificationExpires: Date.now() + 3600000
+  });
+
+  await sendVerificationEmail(user.email, newToken);
+
+  return { message: "Verification email resent" };
 };

@@ -2,7 +2,6 @@ const userService = require("../services/user.service");
 const User = require("../models/user.model"); // make sure path is correct
 
 // ---------- REGISTER USER ----------
-// ---------- REGISTER USER ----------
 exports.registerUser = async (req, res) => {
   try {
     const { age } = req.body;
@@ -190,7 +189,24 @@ exports.approveSeller = async (req, res) => {
 
   }
 };
-// ================= GET USER BY ID =================
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    const result = await userService.resendVerificationEmail(email);
+
+    res.status(200).json(result);
+
+  } catch (error) {
+
+    res.status(400).json({
+      message: error.message
+    });
+
+  }
+};
+
 // ================= GET USER BY ID =================
 exports.getUserById = async (req, res) => {
   try {
@@ -215,6 +231,67 @@ exports.getUserById = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error"
+    });
+  }
+};
+
+// ================= GET MY PROFILE =================
+exports.getMySellerProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log("JWT USER:", req.user);
+console.log("USER ID:", userId);
+    const seller = await userService.getSellerByUserIds(userId);
+
+    if (!seller) {
+      return res.status(404).json({
+        message: "Seller profile not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      seller
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message
+    });
+  }
+};
+
+
+// ================= GET SELLER BY USER ID =================
+exports.getSellerByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const seller = await userService.getSellerByUserId(userId);
+
+    if (!seller) {
+      return res.status(404).json({
+        message: "Seller not found"
+      });
+    }
+
+    // 🔥 Optional: restrict sensitive data
+    const publicSeller = {
+      shopName: seller.shopName,
+      shopDescription: seller.shopDescription,
+      shopImage: seller.shopImage,
+      shopBanner: seller.shopBanner,
+      status: seller.status
+    };
+
+    res.status(200).json({
+      success: true,
+      seller: publicSeller
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message
     });
   }
 };
