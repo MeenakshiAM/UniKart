@@ -35,8 +35,8 @@ const upload = require("../middlewares/upload.middleware");
 // ─────────────────────────────────────────────
 router.post(
   "/create",
-  authMiddleware,
-  roleMiddleware("SELLER"),
+ // authMiddleware,
+  //roleMiddleware("SELLER"),
   upload.array("images", 5),
   createProduct
 );

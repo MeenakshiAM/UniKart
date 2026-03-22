@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Footer from "./components/Footer";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const featuredProducts = [
   { id: 1, name: "Chocolate Truffle Cake", seller: "Sarah's Bakery", price: 450, rating: 4.8, image: "🧁", category: "products" },
@@ -20,6 +21,7 @@ const topSellers = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   
   // Add to cart function - prevents duplicates
   const addToCart = (product) => {
@@ -69,6 +71,17 @@ export default function Home() {
             <h2 className="text-3xl font-bold text-gray-900 mb-3">Top Sellers This Month</h2>
             <p className="text-gray-600">Celebrating our most successful student entrepreneurs</p>
           </div>
+
+
+           <div className="text-center mb-8">
+      <button
+        onClick={() => router.push("./CreateProduct")}  // Navigate to Create Product page
+        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition"
+      >
+        + Create a Product
+      </button>
+    </div>
+     
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {topSellers.map(seller => (

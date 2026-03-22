@@ -25,7 +25,7 @@ const {
 exports.createProduct = async (req, res) => {
   try {
 //console.log("hey im inside the catch error of contoller 111 !!")
-    const sellerId = req.user.userId;
+    const sellerId = req.user?.userId || req.body.userId;
 
     const images = req.files
       ? req.files.map(file =>({
