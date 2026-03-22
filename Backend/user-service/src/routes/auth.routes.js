@@ -11,7 +11,9 @@ const {
   verifyEmail,
   approveSeller,
   getUserById,
-  resendVerificationEmail
+  resendVerificationEmail,
+  getMySellerProfile,
+  getSellerByUserId
 } = require("../controllers/auth.controller");
 
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -65,6 +67,11 @@ router.patch(
   authMiddleware,
   upload.single("image"),
   uploadProfileImage
+);
+
+router.get(
+  "/profile/:userId",
+  getSellerByUserId
 );
 
 router.get("/verify-email", verifyEmail);
