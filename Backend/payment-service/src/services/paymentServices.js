@@ -5,53 +5,41 @@ const crypto = require('crypto');
 const { RAZORPAY } = require('../config/environment');
 
 class PaymentService {
-  
   // Create Razorpay order
   async createOrder(orderData) {
     try {
-      const { orderId, userId, amount, currency = 'INR', type = 'order' } = orderData;
+      const { orderId, userId, amount, currency = 'INR' } = orderData;
 
-      console.log('PaymentService.createOrder called with:', { orderId, userId, amount, currency, type });
-
-      // Skip order validation for test orders
-      if (orderId && !orderId.startsWith('order_')) {
-        const order = await Order.findById(orderId);
-        if (!order) {
-          throw new Error('Order not found');
-        }
+      // Verify order exists
+      const order = await Order.findById(orderId);
+      if (!order) {
+        throw new Error('Order not found');
       }
 
-      const finalUserId = userId || 'test-user-123';
-
       const options = {
-        amount: amount * 100,
+        amount: amount * 100, // Convert to paise
         currency,
-        receipt: orderId || `receipt_${Date.now()}`,
+        receipt: `order_${orderId}`,
         payment_capture: 1,
         notes: {
-          orderId: orderId || 'temp',
-          userId: finalUserId,
-          type: type
+          orderId: orderId.toString(),
+          userId: userId.toString()
         }
       };
 
-      console.log('Creating Razorpay order with options:', options);
       const razorpayOrder = await razorpay.orders.create(options);
-      console.log('Razorpay order created:', razorpayOrder.id);
 
       // Save payment record
       const payment = new Payment({
-        orderId: orderId && !orderId.startsWith('order_') ? orderId : null,
-        userId: finalUserId,
+        orderId,
+        userId,
         razorpayOrderId: razorpayOrder.id,
         amount,
         currency,
         status: 'created'
       });
 
-      console.log('Saving payment to database...');
       await payment.save();
-      console.log('Payment saved with ID:', payment._id);
 
       return {
         razorpayOrderId: razorpayOrder.id,
@@ -60,7 +48,6 @@ class PaymentService {
         paymentId: payment._id
       };
     } catch (error) {
-      console.error('PaymentService error:', error);
       throw new Error(`Failed to create order: ${error.message}`);
     }
   }

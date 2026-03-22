@@ -1,6 +1,6 @@
 /**
  * UniKart Payment Service - Main Application
- * Express server with Razorpay and MongoDB integration
+ * Express server with Razorpay integration
  */
 
 const express = require('express');
@@ -9,15 +9,7 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT ;
-
-// Import configurations and routes
-const connectDB = require('./config/database');
-const paymentRoutes = require('./routes/paymentRoutes');
-const errorHandler = require('./middlewares/errorHandler');
-
-// Connect to MongoDB
-connectDB();
+const PORT = process.env.PORT || 3001;
 
 // Security Middleware
 app.use(helmet());
@@ -30,49 +22,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-
 // Body Parsing Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request Logging in Development
-if (process.env.NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`);
-    next();
-  });
-}
-// ============================================
-// TEMPORARY TEST TOKEN GENERATOR
-// Add this to your payment service app.js
-// ============================================
-
-const jwt = require('jsonwebtoken');
-
-// Add this route TEMPORARILY (just for testing)
-app.get('/api/generate-test-token', (req, res) => {
-  const { JWT_SECRET } = require('./config/environment');
-  
-  // Create a test user payload
-  const testUser = {
-    id: '507f1f77bcf86cd799439011', // MongoDB ObjectId format
-    email: 'test@college.edu',
-    name: 'Test Student'
-  };
-  
-  // Generate JWT token with your actual secret
-  const token = jwt.sign(testUser, JWT_SECRET, { 
-    expiresIn: '24h' 
-  });
-  
-  res.json({
-    success: true,
-    message: 'Test token generated successfully',
-    token: token,
-    instructions: 'Copy this token and run: localStorage.setItem("authToken", "PASTE_TOKEN_HERE")'
-  });
-});
-
+// Health Check Endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     success: true, 
@@ -84,17 +38,102 @@ app.get('/health', (req, res) => {
 
 // Test route for Razorpay
 app.get('/api/payments/test', (req, res) => {
-  const mongoose = require('mongoose');
   res.json({
     success: true,
     message: 'Payment API is working',
-    razorpayConfigured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
-    mongodbConnected: mongoose.connection.readyState === 1
+    razorpayConfigured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
   });
 });
 
-// API Routes - Uses your paymentRoutes.js file
-app.use('/api/payments', paymentRoutes);
+// Simple create order endpoint (without database for now)
+app.post('/api/payments/create-order', (req, res) => {
+  try {
+    const Razorpay = require('razorpay');
+    
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Razorpay credentials not configured'
+      });
+    }
+
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    const { amount, currency = 'INR' } = req.body;
+
+    const options = {
+      amount: amount * 100, // Convert to paise
+      currency,
+      receipt: `order_${Date.now()}`,
+    };
+
+    razorpay.orders.create(options, (err, order) => {
+      if (err) {
+        console.error('Razorpay error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to create order',
+          error: err.message
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Order created successfully',
+        data: {
+          razorpayOrderId: order.id,
+          amount: order.amount,
+          currency: order.currency,
+          key: process.env.RAZORPAY_KEY_ID
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Create order error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Simple verify payment endpoint
+app.post('/api/payments/confirm', (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+    const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest('hex');
+
+    const isValid = expectedSignature === razorpaySignature;
+
+    if (isValid) {
+      res.json({
+        success: true,
+        message: 'Payment verified successfully'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Payment verification failed'
+      });
+    }
+  } catch (error) {
+    console.error('Verify payment error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
 
 // 404 Handler
 app.use((req, res) => {
@@ -104,9 +143,6 @@ app.use((req, res) => {
     path: req.originalUrl
   });
 });
-
-// Error Handling Middleware (must be last)
-app.use(errorHandler);
 
 // Start Server
 const server = app.listen(PORT, () => {
@@ -125,31 +161,15 @@ const server = app.listen(PORT, () => {
   if (!process.env.RAZORPAY_KEY_SECRET) {
     console.warn('⚠️  WARNING: RAZORPAY_KEY_SECRET not found in .env file');
   }
-  if (!process.env.MONGODB_URI) {
-    console.warn('⚠️  WARNING: MONGODB_URI not found in .env file');
-  }
 });
 
 // Graceful Shutdown
-const gracefulShutdown = () => {
-  console.log('\n⚠️  Received shutdown signal. Closing server gracefully...');
+process.on('SIGTERM', () => {
+  console.log('⚠️  Received shutdown signal');
   server.close(() => {
     console.log('✅ Server closed');
     process.exit(0);
   });
-
-  setTimeout(() => {
-    console.error('❌ Forced shutdown after timeout');
-    process.exit(1);
-  }, 10000);
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-
-process.on('unhandledRejection', (err) => {
-  console.error('❌ Unhandled Promise Rejection:', err);
-  gracefulShutdown();
 });
 
 module.exports = app;
