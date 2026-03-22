@@ -4,7 +4,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendVerificationEmail = require("../utils/sendEmail");
-
+const SellerProfile = require("../models/sellerProfile.model");
+const mongoose = require("mongoose");
 
 // -------- Validation Functions --------
 function isValidRegisterNumber(registerNumber) {
@@ -247,6 +248,19 @@ exports.approveSeller = async (sellerId) => {
   });
 
   return updatedSeller;
+};
+exports.getSellerByUserId = async (userId) => {
+
+  const seller = await SellerProfile.findOne({ userId });
+
+  return seller;
+};
+exports.getSellerByUserIds = async (userId) => {
+
+  return await SellerProfile.findOne({
+    userId: new mongoose.Types.ObjectId(userId)
+  });
+
 };
 exports.resendVerificationEmail = async (email) => {
 

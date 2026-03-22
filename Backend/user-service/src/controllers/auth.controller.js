@@ -234,3 +234,64 @@ exports.getUserById = async (req, res) => {
     });
   }
 };
+
+// ================= GET MY PROFILE =================
+exports.getMySellerProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    console.log("JWT USER:", req.user);
+console.log("USER ID:", userId);
+    const seller = await userService.getSellerByUserIds(userId);
+
+    if (!seller) {
+      return res.status(404).json({
+        message: "Seller profile not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      seller
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message
+    });
+  }
+};
+
+
+// ================= GET SELLER BY USER ID =================
+exports.getSellerByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const seller = await userService.getSellerByUserId(userId);
+
+    if (!seller) {
+      return res.status(404).json({
+        message: "Seller not found"
+      });
+    }
+
+    // 🔥 Optional: restrict sensitive data
+    const publicSeller = {
+      shopName: seller.shopName,
+      shopDescription: seller.shopDescription,
+      shopImage: seller.shopImage,
+      shopBanner: seller.shopBanner,
+      status: seller.status
+    };
+
+    res.status(200).json({
+      success: true,
+      seller: publicSeller
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message
+    });
+  }
+};
