@@ -1,14 +1,27 @@
 require("dotenv").config();
+const path = require("path");
 const connectDB = require("./src/config/db");
-const { analyzeAndDecide } = require("./src/services/moderation/moderationEngine");
+const { moderateImage } = require("./src/services/moderation/visionAnalyzer");
 
 (async () => {
-  await connectDB();
+  try {
+    await connectDB();
 
-  const result = await analyzeAndDecide(
-    "You are stupid and disgusting"
-  );
+    // Local image paths
+    const testImages = [
+      path.join(__dirname, "test-images", "img1.jpg"),
+      path.join(__dirname, "test-images", "dress.webp")
+    ];
 
-  console.log(result);
-  process.exit(0);
+    for (const imgPath of testImages) {
+      console.log(`Checking image: ${imgPath}`);
+      const result = await moderateImage(imgPath);
+      console.log(result);
+    }
+
+    process.exit(0);
+  } catch (err) {
+    console.error("Test failed:", err);
+    process.exit(1);
+  }
 })();

@@ -19,7 +19,8 @@ const moderateText = async (text) => {
     return response.data; // { isAllowed, reason }
   } catch (err) {
     console.error("Moderation service unavailable:", err.message);
-    return { isAllowed: true, reason: null }; // fail open
+    // Throw so Product Service can return proper JSON
+    throw new Error(`Moderation service unavailable: ${err.message}`);
   }
 };
 

@@ -40,7 +40,7 @@ exports.createProduct = async (req, res) => {
     };
     console.log("hey im gonna enter the service  !!")
     const result = await productService.createProductService(productData, sellerId);
-
+    console.log("hey outside the service  !!")
     res.status(201).json({
       success: true,
       message: "Product created successfully",
