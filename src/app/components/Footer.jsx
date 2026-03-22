@@ -97,31 +97,31 @@ const Footer = () => {
           </div>
 
           {/* Company */}
-          <div>
-            <h4 className="font-semibold mb-4 text-lg">Company</h4>
-            <ul className="space-y-2 text-gray-400">
-              <li>
-                <a href="#about" className="hover:text-white transition-colors">
-                  About Us
-                </a>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-white transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="hover:text-white transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <a href="mailto:contact@unikart.com" className="hover:text-white transition-colors">
-                  Contact
-                </a>
-              </li>
-            </ul>
-          </div>
+<div>
+  <h4 className="font-semibold mb-4 text-lg">Company</h4>
+  <ul className="space-y-2 text-gray-400">
+    <li>
+      <Link href="/about" className="hover:text-white transition-colors">
+        About Us
+      </Link>
+    </li>
+    <li>
+      <Link href="/terms" className="hover:text-white transition-colors">
+        Terms of Service
+      </Link>
+    </li>
+    <li>
+      <Link href="/privacy" className="hover:text-white transition-colors">
+        Privacy Policy
+      </Link>
+    </li>
+    <li>
+      <a href="mailto:contact@unikart.com" className="hover:text-white transition-colors">
+        Contact
+      </a>
+    </li>
+  </ul>
+</div>
         </div>
 
         {/* Copyright */}
