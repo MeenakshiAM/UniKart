@@ -25,7 +25,7 @@ const {
 exports.createProduct = async (req, res) => {
   try {
 //console.log("hey im inside the catch error of contoller 111 !!")
-    const sellerId = req.user.userId;
+    const sellerId = req.user?.userId || req.body.userId;
 
     const images = req.files
       ? req.files.map(file =>({
@@ -40,7 +40,7 @@ exports.createProduct = async (req, res) => {
     };
     console.log("hey im gonna enter the service  !!")
     const result = await productService.createProductService(productData, sellerId);
-
+    console.log("hey outside the service  !!")
     res.status(201).json({
       success: true,
       message: "Product created successfully",
