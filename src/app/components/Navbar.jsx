@@ -20,7 +20,29 @@ const Navbar = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [userType, setUserType] = useState('buyer');
+  const [registerNumber, setRegisterNumber] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [department, setDepartment] = useState('');
+
+  // Department options
+  const departments = [
+    'Computer Science',
+    'Information Technology',
+    'Electronics and Communication',
+    'Electrical Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Chemical Engineering',
+    'Biotechnology',
+    'Mathematics',
+    'Physics',
+    'Chemistry',
+    'Business Administration',
+    'Commerce',
+    'Economics',
+    'English',
+    'Other'
+  ];
 
   useEffect(() => {
     const updateCounts = () => {
@@ -77,13 +99,24 @@ const Navbar = () => {
         alert('Please enter email and password');
       }
     } else {
-      // Signup Logic
-      if (name && email && password) {
+      // Signup Logic - with additional fields
+      if (name && email && password && registerNumber && dateOfBirth && department) {
         const mockToken = 'mock-jwt-token-' + Date.now();
+        
+        // Store all user data
+        const userData = {
+          name,
+          email,
+          registerNumber,
+          dateOfBirth,
+          department,
+          createdAt: new Date().toISOString()
+        };
         
         localStorage.setItem('authToken', mockToken);
         localStorage.setItem('userName', name);
-        localStorage.setItem('userType', userType);
+        localStorage.setItem('userType', 'buyer');
+        localStorage.setItem('userData', JSON.stringify(userData));
         
         setIsAuthenticated(true);
         setUserName(name);
@@ -93,7 +126,11 @@ const Navbar = () => {
         setName('');
         setEmail('');
         setPassword('');
-        setUserType('buyer');
+        setRegisterNumber('');
+        setDateOfBirth('');
+        setDepartment('');
+        
+        alert('Account created successfully!');
       } else {
         alert('Please fill all fields');
       }
@@ -176,6 +213,12 @@ const Navbar = () => {
 
                   {showAccountMenu && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2">
+                      <button 
+                        onClick={() => router.push('/seller')}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700"
+                      >
+                        Seller Dashboard
+                      </button>
                       <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
                         Profile
                       </button>
@@ -238,8 +281,8 @@ const Navbar = () => {
 
       {/* Auth Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-8 relative">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-8 relative my-8">
             {/* Close Button */}
             <button
               onClick={() => setShowAuthModal(false)}
@@ -278,61 +321,116 @@ const Navbar = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleAuthSubmit} className="space-y-4">
-              {!isLogin && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                    style={{ color: '#111827' }}
-                    placeholder="John Doe"
-                    required={!isLogin}
-                  />
-                </div>
-              )}
+<form onSubmit={handleAuthSubmit} className="space-y-4">
+  
+  {/* SIGNUP ONLY FIELDS */}
+  {!isLogin && (
+    <>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Full Name *
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+          style={{ color: '#111827' }}
+          placeholder="John Doe"
+          required
+        />
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                  style={{ color: '#111827' }}
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Register Number *
+        </label>
+        <input
+          type="text"
+          value={registerNumber}
+          onChange={(e) => setRegisterNumber(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+          style={{ color: '#111827' }}
+          placeholder="e.g., 2021CS001"
+          required
+        />
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
-                  style={{ color: '#111827' }}
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Date of Birth *
+        </label>
+        <input
+          type="date"
+          value={dateOfBirth}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+          style={{ color: '#111827' }}
+          required
+        />
+      </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mt-6"
-              >
-                {isLogin ? 'Login' : 'Sign Up'}
-              </button>
-            </form>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Branch/Department *
+        </label>
+        <select
+          value={department}
+          onChange={(e) => setDepartment(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+          style={{ color: '#111827' }}
+          required
+        >
+          <option value="">Select Department</option>
+          {departments.map((dept) => (
+            <option key={dept} value={dept}>
+              {dept}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  )}
+
+  {/* EMAIL - FOR BOTH LOGIN AND SIGNUP */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Email *
+    </label>
+    <input
+      type="email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+      style={{ color: '#111827' }}
+      placeholder="you@example.com"
+      required
+    />
+  </div>
+
+  {/* PASSWORD - FOR BOTH LOGIN AND SIGNUP */}
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Password *
+    </label>
+    <input
+      type="password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+      style={{ color: '#111827' }}
+      placeholder="••••••••"
+      required
+    />
+  </div>
+
+  <button
+    type="submit"
+    className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mt-6"
+  >
+    {isLogin ? 'Login' : 'Sign Up'}
+  </button>
+</form>
           </div>
         </div>
       )}
