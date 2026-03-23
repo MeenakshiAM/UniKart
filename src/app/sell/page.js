@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Upload, DollarSign, Package, TrendingUp, BarChart3, X } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 export default function Sell() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("getting-started");
 
   // Authentication state
@@ -68,12 +70,7 @@ export default function Sell() {
   };
 
   const handleCreateSellerAccount = () => {
-    if (!isAuthenticated()) {
-      setShowAuthModal(true);
-      return;
-    }
-    // In a real app, this would redirect to seller dashboard or profile setup
-    alert('Redirecting to seller account setup...');
+    router.push('/seller/register');
   };
 
   return (

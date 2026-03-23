@@ -73,14 +73,14 @@ export default function Home() {
           </div>
 
 
-           <div className="text-center mb-8">
+           {/* <div className="text-center mb-8">
       <button
-        onClick={() => router.push("./CreateProduct")}  // Navigate to Create Product page
+        onClick={() => router.push("/CreateProduct")}
         className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition"
       >
         + Create a Product
       </button>
-    </div>
+    </div> */}
      
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
