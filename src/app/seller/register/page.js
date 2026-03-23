@@ -147,7 +147,7 @@ export default function SellerRegister() {
         localStorage.setItem('sellerProducts', JSON.stringify(sellerProducts));
 
         alert('✅ Seller account and product created successfully!');
-        router.push('/seller');
+        //router.push('/seller');
       } else {
         alert(`❌ Error: ${data.message || 'Failed to create product. Check console.'}`);
         console.error('Error:', data);
