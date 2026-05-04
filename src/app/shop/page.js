@@ -5,6 +5,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Star, Heart, ShoppingCart, Filter, X, Calendar } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import {
+  addOrIncrementCartItem,
+  getItemKey,
+  getStoredWishlist,
+  notifyWishlistUpdated,
+  toggleWishlistItem
+} from "../utils/storage";
 
 // COMPLETE PRODUCT DATA - Enhanced with your exact images
 const sampleProducts = [
@@ -1164,8 +1171,10 @@ export default function Shop() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      const savedWishlist = getStoredWishlist(sampleProducts.map((product) => product.id));
       setWishlist(savedWishlist);
+      localStorage.setItem('wishlist', JSON.stringify(savedWishlist));
+      notifyWishlistUpdated();
     }
   }, []);
 
@@ -1194,16 +1203,10 @@ export default function Shop() {
     setFilteredProducts(filtered);
   }, [selectedCategory, searchQuery]);
 
-  const toggleWishlist = (productId) => {
-    const newWishlist = wishlist.includes(productId) 
-      ? wishlist.filter(id => id !== productId)
-      : [...wishlist, productId];
+  const toggleWishlist = (product) => {
+    const newWishlist = toggleWishlistItem(product, sampleProducts.map((item) => item.id));
     
     setWishlist(newWishlist);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-      window.dispatchEvent(new Event('storage'));
-    }
   };
 
   // Authentication functions
@@ -1265,23 +1268,14 @@ export default function Shop() {
     }
 
     if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      
-      // Check if product already exists in cart
-      const existingItemIndex = cart.findIndex(item => item.id === product.id);
-      
-      if (existingItemIndex !== -1) {
-        // Product exists - increase quantity
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
-        alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+      const cart = addOrIncrementCartItem(product);
+      const item = cart.find((cartItem) => getItemKey(cartItem.id) === getItemKey(product.id));
+
+      if (item?.quantity > 1) {
+        alert(`${product.name} quantity increased to ${item.quantity}!`);
       } else {
-        // New product - add to cart
-        cart.push({ ...product, quantity: 1 });
         alert(`${product.name} added to cart!`);
       }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
     }
   };
 
@@ -1524,17 +1518,17 @@ export default function Shop() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent card click
-                          toggleWishlist(product.id);
+                          toggleWishlist(product);
                         }}
                         className={`absolute top-3 right-3 p-2 rounded-full transition-all ${
-                          wishlist.includes(product.id)
+                          wishlist.some((id) => getItemKey(id) === getItemKey(product.id))
                             ? 'bg-pink-500 text-white shadow-lg scale-110'
                             : 'bg-white text-gray-400 hover:text-pink-500 hover:scale-110 shadow-md'
                         }`}
-                        title={wishlist.includes(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                        title={wishlist.some((id) => getItemKey(id) === getItemKey(product.id)) ? "Remove from wishlist" : "Add to wishlist"}
                       >
                         <Heart 
-                          className={`w-5 h-5 transition-all ${wishlist.includes(product.id) ? 'fill-current' : ''}`}
+                          className={`w-5 h-5 transition-all ${wishlist.some((id) => getItemKey(id) === getItemKey(product.id)) ? 'fill-current' : ''}`}
                         />
                       </button>
                     </div>

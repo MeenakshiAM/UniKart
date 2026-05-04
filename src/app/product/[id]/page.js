@@ -5,6 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Star, Heart, ShoppingCart, ArrowLeft, Truck, Shield, RotateCcw, Flag, X, Calendar, Clock, MapPin, Navigation } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import {
+  addOrIncrementCartItem,
+  getItemKey,
+  getStoredWishlist,
+  notifyWishlistUpdated,
+  toggleWishlistItem
+} from "../../utils/storage";
 
 // SAME PRODUCT DATA AS BEFORE - keeping all 26 products
 const allProducts = [
@@ -1152,23 +1159,19 @@ export default function ProductDetail() {
     setProduct(foundProduct);
 
     if (typeof window !== 'undefined') {
-      const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+      const savedWishlist = getStoredWishlist(allProducts.map((product) => product.id));
       setWishlist(savedWishlist);
+      localStorage.setItem('wishlist', JSON.stringify(savedWishlist));
+      notifyWishlistUpdated();
     }
   }, [productId]);
 
   const toggleWishlist = () => {
     if (!product) return;
     
-    const newWishlist = wishlist.includes(product.id) 
-      ? wishlist.filter(id => id !== product.id)
-      : [...wishlist, product.id];
+    const newWishlist = toggleWishlistItem(product, allProducts.map((item) => item.id));
     
     setWishlist(newWishlist);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-      window.dispatchEvent(new Event('storage'));
-    }
   };
 
   // Authentication functions
@@ -1232,19 +1235,14 @@ export default function ProductDetail() {
     }
     
     if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItemIndex = cart.findIndex(item => item.id === product.id);
-      
-      if (existingItemIndex !== -1) {
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
-        alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+      const cart = addOrIncrementCartItem(product);
+      const item = cart.find((cartItem) => getItemKey(cartItem.id) === getItemKey(product.id));
+
+      if (item?.quantity > 1) {
+        alert(`${product.name} quantity increased to ${item.quantity}!`);
       } else {
-        cart.push({ ...product, quantity: 1 });
         alert(`${product.name} added to cart!`);
       }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
     }
   };
 
@@ -1765,12 +1763,12 @@ export default function ProductDetail() {
                 <button
                   onClick={toggleWishlist}
                   className={`px-6 py-4 rounded-lg border-2 transition-all ${
-                    wishlist.includes(product.id)
+                    wishlist.some((id) => getItemKey(id) === getItemKey(product.id))
                       ? 'border-pink-500 bg-pink-50 text-pink-500'
                       : 'border-gray-300 hover:border-pink-500'
                   }`}
                 >
-                  <Heart className={`w-6 h-6 ${wishlist.includes(product.id) ? 'fill-current' : ''}`} />
+                  <Heart className={`w-6 h-6 ${wishlist.some((id) => getItemKey(id) === getItemKey(product.id)) ? 'fill-current' : ''}`} />
                 </button>
               </div>
             )}

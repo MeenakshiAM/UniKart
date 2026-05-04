@@ -222,7 +222,7 @@ export default function SellerRegister() {
                     type="text"
                     name="name"
                     value={formData.name}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-black caret-black"
                     readOnly
                   />
                 </div>
@@ -232,7 +232,7 @@ export default function SellerRegister() {
                     type="email"
                     name="email"
                     value={formData.email}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-black caret-black"
                     readOnly
                   />
                 </div>
@@ -242,7 +242,7 @@ export default function SellerRegister() {
                     type="text"
                     name="registerNumber"
                     value={formData.registerNumber}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-black caret-black"
                     readOnly
                   />
                 </div>
@@ -252,7 +252,7 @@ export default function SellerRegister() {
                     type="text"
                     name="department"
                     value={formData.department}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-black caret-black"
                     readOnly
                   />
                 </div>
@@ -278,7 +278,7 @@ export default function SellerRegister() {
                     name="shopName"
                     value={formData.shopName}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                     placeholder="e.g., Sarah's Sweet Treats, Tech Hub, Art Corner"
                     required
                   />
@@ -307,7 +307,7 @@ export default function SellerRegister() {
                     name="itemCategory"
                     value={formData.itemCategory}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                     required
                   >
                     <option value="ELECTRONICS">Electronics</option>
@@ -332,7 +332,7 @@ export default function SellerRegister() {
                     name="itemSubCategory"
                     value={formData.itemSubCategory}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                     placeholder="e.g., Laptops, Notebooks, T-Shirts"
                   />
                 </div>
@@ -347,7 +347,7 @@ export default function SellerRegister() {
                     name="itemName"
                     value={formData.itemName}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                     placeholder="e.g., Chocolate Truffle Cake, MacBook Pro, Custom Artwork"
                     required
                   />
@@ -363,7 +363,7 @@ export default function SellerRegister() {
                     value={formData.itemDescription}
                     onChange={handleChange}
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-black caret-black"
                     placeholder="Describe your product in detail..."
                     required
                   />
@@ -380,7 +380,7 @@ export default function SellerRegister() {
                       name="itemPrice"
                       value={formData.itemPrice}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                       placeholder="450"
                       min="0"
                       step="0.01"
@@ -397,7 +397,7 @@ export default function SellerRegister() {
                       name="itemQuantity"
                       value={formData.itemQuantity}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                       placeholder="1"
                       min="1"
                       required
@@ -443,7 +443,7 @@ export default function SellerRegister() {
                     name="itemImage"
                     value={formData.itemImage}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-black caret-black"
                     placeholder="https://example.com/image.jpg or 🎂"
                   />
                 </div>

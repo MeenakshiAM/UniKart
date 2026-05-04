@@ -5,10 +5,22 @@ import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, CheckCircle, AlertCircle,
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { getCartQuantity, getStoredCart, notifyCartUpdated } from "../utils/storage";
 
 
 const TEST_USER_ID = '69b828af187f3e53daed9db1'; 
 
+const normalizeCartItem = (item) => {
+  if (!item || item.id == null) return null;
+
+  const quantity = getCartQuantity(item);
+  if (quantity <= 0) return null;
+
+  return {
+    ...item,
+    quantity
+  };
+};
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -76,22 +88,22 @@ export default function Cart() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const cartWithQuantity = cart.map(item => ({
-        ...item,
-        quantity: item.quantity || 1
-      }));
+      const cartWithQuantity = getStoredCart()
+        .map(normalizeCartItem)
+        .filter(Boolean);
       setCartItems(cartWithQuantity);
+      localStorage.setItem('cart', JSON.stringify(cartWithQuantity));
+      notifyCartUpdated();
     }
   }, []);
 
   const updateQuantity = (index, delta) => {
     const newCart = [...cartItems];
-    newCart[index].quantity = Math.max(1, (newCart[index].quantity || 1) + delta);
+    newCart[index].quantity = Math.max(1, getCartQuantity(newCart[index]) + delta);
     setCartItems(newCart);
     if (typeof window !== 'undefined') {
       localStorage.setItem('cart', JSON.stringify(newCart));
-      window.dispatchEvent(new Event('storage'));
+      notifyCartUpdated();
     }
   };
 
@@ -100,7 +112,7 @@ export default function Cart() {
     setCartItems(newCart);
     if (typeof window !== 'undefined') {
       localStorage.setItem('cart', JSON.stringify(newCart));
-      window.dispatchEvent(new Event('storage'));
+      notifyCartUpdated();
     }
   };
 
@@ -108,7 +120,7 @@ export default function Cart() {
     setCartItems([]);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('cart');
-      window.dispatchEvent(new Event('storage'));
+      notifyCartUpdated();
     }
   };
 

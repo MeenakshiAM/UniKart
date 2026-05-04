@@ -5,6 +5,14 @@ import { Heart, ShoppingCart, Trash2, Calendar, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import {
+  addOrIncrementCartItem,
+  getItemKey,
+  getStoredWishlist,
+  getStoredWishlistProducts,
+  notifyWishlistUpdated,
+  toggleWishlistItem
+} from "../utils/storage";
 
 // ALL PRODUCTS DATA - Same as shop/page.js
 const allProducts = [
@@ -145,24 +153,42 @@ export default function Wishlist() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      setWishlist(savedWishlist);
+      const savedWishlist = getStoredWishlist();
+      const cachedProducts = getStoredWishlistProducts();
+      const productMap = new Map(
+        [...allProducts, ...cachedProducts].map((product) => [getItemKey(product.id), product])
+      );
       
       // Get full product details for wishlist items
-      const products = allProducts.filter(p => savedWishlist.includes(p.id));
+      const products = savedWishlist
+        .map((id) => {
+          const product = productMap.get(getItemKey(id));
+          if (product) return product;
+
+          return {
+            id,
+            name: `Saved item #${id}`,
+            seller: "UniKart Seller",
+            price: 0,
+            image: "📦",
+            category: "products",
+            description: "Open the shop and add this item again to refresh its details.",
+            inStock: true
+          };
+        });
+      const validWishlist = products.map((product) => product.id);
+
+      setWishlist(validWishlist);
       setWishlistProducts(products);
+      localStorage.setItem('wishlist', JSON.stringify(validWishlist));
+      notifyWishlistUpdated();
     }
   }, []);
 
   const removeFromWishlist = (productId) => {
-    const newWishlist = wishlist.filter(id => id !== productId);
+    const newWishlist = toggleWishlistItem(productId);
     setWishlist(newWishlist);
-    setWishlistProducts(wishlistProducts.filter(p => p.id !== productId));
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-      window.dispatchEvent(new Event('storage'));
-    }
+    setWishlistProducts(wishlistProducts.filter((p) => getItemKey(p.id) !== getItemKey(productId)));
   };
 
   // Authentication functions
@@ -226,19 +252,14 @@ export default function Wishlist() {
     }
     
     if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItemIndex = cart.findIndex(item => item.id === product.id);
-      
-      if (existingItemIndex !== -1) {
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 0) + 1;
-        alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+      const cart = addOrIncrementCartItem(product);
+      const item = cart.find((cartItem) => getItemKey(cartItem.id) === getItemKey(product.id));
+
+      if (item?.quantity > 1) {
+        alert(`${product.name} quantity increased to ${item.quantity}!`);
       } else {
-        cart.push({ ...product, quantity: 1 });
         alert(`${product.name} added to cart!`);
       }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
     }
   };
 
@@ -384,6 +405,7 @@ export default function Wishlist() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {wishlistProducts.map(item => {
                 const isService = item.category === 'services';
+                const isUnavailable = item.inStock === false;
                 
                 return (
                   <div 
@@ -420,7 +442,7 @@ export default function Wishlist() {
                       </div>
 
                       {/* Out of Stock Badge */}
-                      {!item.inStock && (
+                      {isUnavailable && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                           <span className="bg-red-500 text-white px-4 py-2 rounded-full font-semibold">
                             Out of Stock
@@ -459,20 +481,20 @@ export default function Wishlist() {
                             }
                             navigateToProduct(item.id);
                           }}
-                          disabled={!item.inStock}
+                          disabled={isUnavailable}
                           className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                         >
                           <Calendar className="w-4 h-4" />
-                          {item.inStock ? "Book Slot" : "Unavailable"}
+                          {isUnavailable ? "Unavailable" : "Book Slot"}
                         </button>
                       ) : (
                         <button
                           onClick={(e) => addToCart(item, e)}
-                          disabled={!item.inStock}
+                          disabled={isUnavailable}
                           className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                         >
                           <ShoppingCart className="w-4 h-4" />
-                          {item.inStock ? "Add to Cart" : "Unavailable"}
+                          {isUnavailable ? "Unavailable" : "Add to Cart"}
                         </button>
                       )}
                     </div>

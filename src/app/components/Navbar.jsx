@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Heart, User, Menu, X } from 'lucide-react';
+import { getCartCount, getWishlistCount } from '../utils/storage';
 
 const Navbar = () => {
   const router = useRouter();
@@ -46,23 +47,29 @@ const Navbar = () => {
 
   useEffect(() => {
     const updateCounts = () => {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-      const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
-      setCartCount(totalItems);
-      setWishlistCount(wishlist.length);
+      setCartCount(getCartCount());
+      setWishlistCount(getWishlistCount());
 
       const token = localStorage.getItem('authToken');
       const storedName = localStorage.getItem('userName');
       if (token) {
         setIsAuthenticated(true);
         setUserName(storedName || 'User');
+      } else {
+        setIsAuthenticated(false);
+        setUserName('');
       }
     };
 
     updateCounts();
     window.addEventListener('storage', updateCounts);
-    return () => window.removeEventListener('storage', updateCounts);
+    window.addEventListener('cartUpdated', updateCounts);
+    window.addEventListener('wishlistUpdated', updateCounts);
+    return () => {
+      window.removeEventListener('storage', updateCounts);
+      window.removeEventListener('cartUpdated', updateCounts);
+      window.removeEventListener('wishlistUpdated', updateCounts);
+    };
   }, []);
 
   const handleSignOut = () => {

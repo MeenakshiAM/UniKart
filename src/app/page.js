@@ -6,6 +6,7 @@ import Hero from "./components/Hero";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { addOrIncrementCartItem } from "./utils/storage";
 
 const featuredProducts = [
   { id: 1, name: "Chocolate Truffle Cake", seller: "Sarah's Bakery", price: 450, rating: 4.8, image: "🧁", category: "products" },
@@ -26,23 +27,14 @@ export default function Home() {
   // Add to cart function - prevents duplicates
   const addToCart = (product) => {
     if (typeof window !== 'undefined') {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      
-      // Check if product already exists in cart
-      const existingItemIndex = cart.findIndex(item => item.id === product.id);
-      
-      if (existingItemIndex !== -1) {
-        // Product exists - increase quantity
-        cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
-        alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+      const cart = addOrIncrementCartItem(product);
+      const item = cart.find((cartItem) => String(cartItem.id) === String(product.id));
+
+      if (item?.quantity > 1) {
+        alert(`${product.name} quantity increased to ${item.quantity}!`);
       } else {
-        // New product - add to cart
-        cart.push({ ...product, quantity: 1 });
         alert(`${product.name} added to cart!`);
       }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      window.dispatchEvent(new Event('storage'));
     }
   };
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ShoppingBag, Sparkles, Heart } from 'lucide-react';
+import { addOrIncrementCartItem } from '../utils/storage';
 
 const Hero = () => {
   const router = useRouter();
@@ -73,19 +74,14 @@ const addToCart = (product, e) => {
       return;
     }
     
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItemIndex = cart.findIndex(item => item.id === product.id);
-    
-    if (existingItemIndex !== -1) {
-      cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
-      alert(`${product.name} quantity increased to ${cart[existingItemIndex].quantity}!`);
+    const cart = addOrIncrementCartItem(product);
+    const item = cart.find((cartItem) => String(cartItem.id) === String(product.id));
+
+    if (item?.quantity > 1) {
+      alert(`${product.name} quantity increased to ${item.quantity}!`);
     } else {
-      cart.push({ ...product, quantity: 1 });
       alert(`${product.name} added to cart!`);
     }
-    
-    localStorage.setItem('cart', JSON.stringify(cart));
-    window.dispatchEvent(new Event('storage'));
   }
 };
 
