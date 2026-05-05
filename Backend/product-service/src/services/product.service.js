@@ -62,7 +62,12 @@ exports.createProductService = async (productData, sellerId) => {
   const { isAllowed: textAllowed, reason: textReason } = await moderateText(`${title} ${description}`);
 
   // 2️⃣ Image moderation
-  const { isAllowed: imagesAllowed, results: imageResults } = await moderateImages(images);
+  const imageUrls = (images || []).map(img => img.url);
+
+console.log("Image URLs sent for moderation:", imageUrls);
+
+const { isAllowed: imagesAllowed, results: imageResults } =
+  await moderateImages(imageUrls);
 
   const finalAllowed = textAllowed && imagesAllowed;
   const moderationReason = finalAllowed ? null : `Text: ${textReason}; Images: ${imageResults.filter(r => !r.isAllowed).map(r => r.imageUrl).join(", ")}`;

@@ -5,19 +5,42 @@ const client = new vision.ImageAnnotatorClient();
 
 const moderateImage = async (imageUrl) => {
   try {
-    const [result] = await client.safeSearchDetection(imageUrl);
-    const detections = result.safeSearchAnnotation;
+    const [result] = await client.safeSearchDetection({
+      image: {
+        source: { imageUri: imageUrl }
+      }
+    });
 
-    const { adult, violence, racy } = detections;
+    const detections = result.safeSearchAnnotation || {};
 
-    const isAllowed = [adult, violence, racy].every(
-      (cat) => cat === "VERY_UNLIKELY" || cat === "UNLIKELY"
-    );
+    const {
+      adult = "UNKNOWN",
+      violence = "UNKNOWN",
+      racy = "UNKNOWN"
+    } = detections;
 
-    return { isAllowed, details: detections, imageUrl };
+    const allowedLevels = ["VERY_UNLIKELY", "UNLIKELY"];
+
+    const isAllowed =
+      allowedLevels.includes(adult) &&
+      allowedLevels.includes(violence) &&
+      allowedLevels.includes(racy);
+
+    return {
+      isAllowed,
+      imageUrl,
+      details: { adult, violence, racy }
+    };
+
   } catch (error) {
-    console.error("Vision API error:", error);
-    return { isAllowed: false, details: null, imageUrl, error: error.message };
+    console.error("Vision API error:", error.message);
+
+    return {
+      isAllowed: false,
+      imageUrl,
+      details: null,
+      error: error.message
+    };
   }
 };
 
