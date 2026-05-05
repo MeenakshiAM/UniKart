@@ -184,7 +184,7 @@ export default function Sell() {
       <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Start Selling on CampusMart</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Start Selling on UniKart</h1>
             <p className="text-xl text-indigo-100 mb-8">
               Turn your passion into profit. Join hundreds of student entrepreneurs.
             </p>
@@ -334,7 +334,7 @@ export default function Sell() {
         {/* Benefits Tab */}
         {activeTab === "benefits" && (
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Why Sell on CampusMart?</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Why Sell on UniKart?</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
